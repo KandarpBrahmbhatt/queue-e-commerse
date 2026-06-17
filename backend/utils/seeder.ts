@@ -179,6 +179,12 @@ async function seed() {
     try {
         await connectDB();
 
+        console.log("Clearing existing data...");
+        await User.deleteMany({});
+        await Product.deleteMany({});
+        await Cart.deleteMany({});
+        console.log("Existing data cleared.");
+
         await seedUsers();
 
         await seedProducts();

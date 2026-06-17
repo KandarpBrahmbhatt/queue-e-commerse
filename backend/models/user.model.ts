@@ -1,6 +1,6 @@
 import mongoose, { Schema } from 'mongoose'
 
-import { Request } from "express";
+import type { Request } from "express";
 export interface AuthRequest extends Request {
     user?: {
         _id?: string;

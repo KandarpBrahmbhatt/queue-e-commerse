@@ -1,11 +1,13 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export enum ProductStatus {
-    ACTIVE = "ACTIVE",
-    INACTIVE = "INACTIVE",
-    DRAFT = "DRAFT",
-}
+export const ProductStatus = {
+    ACTIVE: "ACTIVE",
+    INACTIVE: "INACTIVE",
+    DRAFT: "DRAFT",
+} as const;
 
+export type ProductStatus =
+    typeof ProductStatus[keyof typeof ProductStatus];
 export interface IProduct extends Document {
     name: string;
     slug: string;

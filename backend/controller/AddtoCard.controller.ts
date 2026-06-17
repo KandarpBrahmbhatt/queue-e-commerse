@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { Cart } from "../models/card.model";
 import Product from "../models/product.model";
-import { AuthRequest } from "../models/user.model";
+import User, { AuthRequest } from "../models/user.model";
 import { cartQueue } from "../queue/cart.queue";
 
 export const addToCart = async (req: AuthRequest, res: Response) => {
@@ -53,11 +53,19 @@ export const addToCart = async (req: AuthRequest, res: Response) => {
         await cart.save();
 
 
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
         await cartQueue.add(
             "abandoned-cart",
             {
                 userId,
-                email: "brahmbhattkandarp64@gmail.com",
+                email: user.email,
             },
             {
                 delay: 60 * 1000,
