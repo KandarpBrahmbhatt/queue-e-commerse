@@ -48,12 +48,8 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
   const handleCheckout = async () => {
     setCheckingOut(true);
     try {
-      // Clear the cart by removing each item sequentially
-      for (const item of cartItems) {
-        const pId = item.product?._id || item.product;
-        await api.cart.remove(pId);
-      }
-      showNotification('Checkout successful! Thank you for your order.', 'success');
+      const response = await api.orders.create();
+      showNotification(`Order placed successfully! Order Number: ${response.order?.orderNumber || ''}`, 'success');
       onCartChange({ items: [] });
       onClose();
     } catch (err) {
@@ -185,8 +181,11 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
           display: flex;
           flex-direction: column;
           animation: slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          background: #f1f3f6; /* Flipkart light gray inside drawer */
-          box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+          background: rgba(10, 11, 16, 0.95);
+          backdrop-filter: var(--glass-blur);
+          -webkit-backdrop-filter: var(--glass-blur);
+          border-left: 1px solid var(--border-color);
+          box-shadow: -10px 0 30px rgba(0,0,0,0.5);
         }
 
         @keyframes slideInLeft {
@@ -200,7 +199,7 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
 
         .cart-header {
           padding: 16px 20px;
-          background: #fff;
+          background: transparent;
           border-bottom: 1px solid var(--border-color);
           display: flex;
           align-items: center;
@@ -216,18 +215,19 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
         .cart-title-area h2 {
           font-size: 1.1rem;
           font-weight: 700;
-          color: #212121;
+          color: var(--text-main);
           text-transform: uppercase;
-          letter-spacing: 0.2px;
+          letter-spacing: 0.5px;
         }
 
         .cart-count-pill {
-          background: #f1f3f6;
+          background: rgba(255, 255, 255, 0.05);
           font-size: 0.75rem;
           font-weight: 700;
           padding: 2px 8px;
-          border-radius: 2px;
+          border-radius: var(--radius-xs);
           color: var(--text-muted);
+          border: 1px solid var(--border-color);
         }
 
         .cart-close-btn {
@@ -236,7 +236,7 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
           color: var(--text-muted);
           cursor: pointer;
           padding: 6px;
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-full);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -245,6 +245,7 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
 
         .cart-close-btn:hover {
           color: var(--text-main);
+          background: rgba(255, 255, 255, 0.05);
         }
 
         .cart-body {
@@ -260,10 +261,10 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
           align-items: center;
           justify-content: center;
           text-align: center;
-          background: #fff;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-color);
           padding: 24px;
-          border-radius: 2px;
-          box-shadow: var(--shadow-sm);
+          border-radius: var(--radius-sm);
         }
 
         .empty-cart-icon {
@@ -276,7 +277,7 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
           font-size: 1.1rem;
           font-weight: 500;
           margin-bottom: 6px;
-          color: #212121;
+          color: var(--text-main);
         }
 
         .cart-empty-state p {
@@ -293,14 +294,18 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
         }
 
         .cart-item {
-          background: #fff;
-          border-color: #f0f0f0;
-          border-radius: 2px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-sm);
           padding: 16px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          box-shadow: var(--shadow-sm);
+          transition: border-color 0.2s;
+        }
+
+        .cart-item:hover {
+          border-color: rgba(139, 92, 246, 0.2);
         }
 
         .cart-item-info {
@@ -311,8 +316,8 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
         }
 
         .cart-item-title {
-          font-size: 0.9rem;
-          font-weight: 500;
+          font-size: 0.95rem;
+          font-weight: 600;
           color: var(--text-main);
           max-width: 180px;
           white-space: nowrap;
@@ -340,9 +345,9 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
         .quantity-controller {
           display: flex;
           align-items: center;
-          background: #fff;
+          background: rgba(0, 0, 0, 0.2);
           border: 1px solid var(--border-color);
-          border-radius: 2px;
+          border-radius: var(--radius-xs);
         }
 
         .qty-btn {
@@ -359,11 +364,11 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
         }
 
         .qty-btn:hover:not(:disabled) {
-          background: #f5f5f5;
+          background: rgba(255, 255, 255, 0.05);
         }
 
         .qty-btn:disabled {
-          opacity: 0.5;
+          opacity: 0.3;
           cursor: not-allowed;
         }
 
@@ -390,14 +395,14 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
         }
 
         .item-remove-btn:hover:not(:disabled) {
-          color: #ff6161;
+          color: var(--danger);
         }
 
         .cart-footer {
           padding: 18px 24px;
-          background: #fff;
+          background: rgba(10, 11, 16, 0.6);
           border-top: 1px solid var(--border-color);
-          box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+          backdrop-filter: var(--glass-blur);
         }
 
         .cart-summary {
@@ -411,11 +416,12 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
           display: flex;
           justify-content: space-between;
           font-size: 0.9rem;
-          color: #212121;
+          color: var(--text-muted);
         }
 
         .summary-val {
           font-weight: 500;
+          color: var(--text-main);
         }
 
         .delivery-free {
@@ -433,7 +439,7 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
 
         .total-price {
           color: var(--text-main);
-          font-size: 1.2rem;
+          font-size: 1.25rem;
           font-weight: 700;
         }
 
@@ -442,8 +448,8 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
           padding: 14px;
           font-size: 0.95rem;
           font-weight: 700;
-          border-radius: 2px;
-          text-transform: uppercase;
+          border-radius: var(--radius-sm);
+          text-transform: none;
         }
       `}</style>
     </div>

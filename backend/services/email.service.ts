@@ -27,3 +27,39 @@ export const sendAbandonedCartEmail =
             `Email sent to ${email}`
         );
     };
+
+
+
+export const sendOrderConfirmationEmail = async (
+    email: string,
+    name: string,
+    orderNumber: string,
+    totalAmount: number
+) => {
+
+    await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+
+        to: email,
+
+        subject: "Order Confirmation",
+
+        html: `
+            <h2>Hello ${name},</h2>
+
+            <p>Your order has been placed successfully.</p>
+
+            <p>
+                Order Number:
+                <strong>${orderNumber}</strong>
+            </p>
+
+            <p>
+                Total Amount:
+                <strong>₹${totalAmount}</strong>
+            </p>
+
+            <p>Thank you for shopping with us.</p>
+        `,
+    });
+};

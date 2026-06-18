@@ -97,10 +97,9 @@ export const deletedProduct = async(req:Request,res:Response)=>{
 
 
 
-export const getAggregationProduct = async (
-    req: Request,
-    res: Response
-) => {
+export const getAggregationProduct = async (req: Request,res: Response) => {
+
+
     try {
 /*
 

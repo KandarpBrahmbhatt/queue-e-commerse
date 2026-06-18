@@ -7,7 +7,7 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
       <div className="navbar-container">
         <div className="brand" onClick={() => onTabChange('shop')}>
           <ShoppingBag className="brand-icon" size={20} />
-          <span className="brand-text">Flipkart<i>Lite</i></span>
+          <span className="brand-text">Aether<i>Store</i></span>
         </div>
 
         <div className="nav-links">
@@ -17,6 +17,14 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
           >
             Explore Shop
           </button>
+          {user && (
+            <button 
+              className={`nav-link-btn ${activeTab === 'orders' ? 'active' : ''}`}
+              onClick={() => onTabChange('orders')}
+            >
+              My Orders
+            </button>
+          )}
         </div>
 
         <div className="nav-actions">
@@ -49,13 +57,16 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
           top: 0;
           left: 0;
           right: 0;
-          height: 56px; /* Flipkart Header Height */
+          height: 56px;
           z-index: 90;
-          background: var(--primary);
+          background: rgba(8, 9, 14, 0.7);
+          backdrop-filter: var(--glass-blur);
+          -webkit-backdrop-filter: var(--glass-blur);
+          border-bottom: 1px solid var(--border-color);
           display: flex;
           align-items: center;
           color: #fff;
-          box-shadow: 0 1px 10px rgba(0,0,0,0.1);
+          box-shadow: var(--shadow-sm);
         }
 
         .navbar-container {
@@ -76,7 +87,7 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
         }
 
         .brand-icon {
-          color: #ffe500; /* Yellow accent star/bag */
+          color: #a78bfa;
         }
 
         .brand-text {
@@ -89,7 +100,7 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
         .brand-text i {
           font-weight: 400;
           font-size: 0.95rem;
-          color: #ffe500;
+          color: #a78bfa;
           margin-left: 2px;
           font-style: italic;
         }
@@ -147,7 +158,7 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
         }
 
         .cart-badge {
-          background: #ff1e1e; /* Red Badge */
+          background: var(--danger);
           color: #fff;
           font-size: 0.7rem;
           font-weight: 700;
@@ -158,10 +169,11 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 1px solid #fff;
+          border: 1px solid rgba(255, 255, 255, 0.2);
           position: absolute;
           top: -2px;
           right: -2px;
+          box-shadow: 0 0 8px var(--danger-glow);
         }
 
         .user-profile {
@@ -181,7 +193,7 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
         }
 
         .user-avatar {
-          color: #ffe500;
+          color: #a78bfa;
         }
 
         .user-name {

@@ -34,8 +34,23 @@ export const api = {
       }),
   },
   products: {
-    getAll: (page = 1, limit = 10, search = '') =>
-      request(`/product/get?page=${page}&limit=${limit}&search=${search}`),
+    getAggregation: (page = 1, limit = 10, search = '') => {
+      let url = `/product/getAggregationProduct?page=${page}&limit=${limit}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+      return request(url);
+    },
+  },
+  orders: {
+    create: () =>
+      request('/order/create', {
+        method: 'POST',
+      }),
+    getAggregation: (page = 1, limit = 10) =>
+      request(`/order/getaggragationOrder?page=${page}&limit=${limit}`),
+    getCurrentUser: () =>
+      request('/order/getCuurentUserOrder'),
   },
   cart: {
     get: () => request('/cart/get'),

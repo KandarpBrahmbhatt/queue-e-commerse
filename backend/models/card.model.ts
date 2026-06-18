@@ -162,7 +162,7 @@ const cartSchema = new Schema<ICart>(
             required: true,
             unique: true,
         },
-        items: [
+        items: [    
             {
                 product: {
                     type: Schema.Types.ObjectId,

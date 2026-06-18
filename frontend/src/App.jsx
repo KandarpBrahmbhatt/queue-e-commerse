@@ -26,12 +26,19 @@ export default function App() {
   const [notification, setNotification] = useState(null);
   const [productsLoading, setProductsLoading] = useState(false);
 
+  // Orders State
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersTotalPages, setOrdersTotalPages] = useState(1);
+
   // Sync user profile to localStorage
   useEffect(() => {
     if (user) {
       localStorage.setItem('user', JSON.stringify(user));
     } else {
       localStorage.removeItem('user');
+      setOrders([]);
     }
   }, [user]);
 
@@ -40,19 +47,37 @@ export default function App() {
     setNotification({ message, type });
   }, []);
 
-  // Fetch Products
+  // Fetch Products via Aggregation API
   const fetchProducts = useCallback(async () => {
     setProductsLoading(true);
     try {
-      const response = await api.products.getAll(page, 9, debouncedSearch);
-      setProducts(response.prouduct || []);
-      setTotalPages(response.totalPages || 1);
+      const response = await api.products.getAggregation(page, 9, debouncedSearch);
+      setProducts(response.data || []);
+      setTotalPages(response.pagination?.totalPages || 1);
     } catch (err) {
       showNotification(err.message || 'Failed to load products', 'error');
     } finally {
       setProductsLoading(false);
     }
   }, [page, debouncedSearch, showNotification]);
+
+  // Fetch Orders via Current User endpoint
+  const fetchOrders = useCallback(async () => {
+    if (!user) return;
+    setOrdersLoading(true);
+    try {
+      const response = await api.orders.getCurrentUser();
+      setOrders(response.order || []);
+      setOrdersTotalPages(1);
+    } catch (err) {
+      setOrders([]);
+      if (!err.message.includes('not found')) {
+        showNotification(err.message || 'Failed to load orders', 'error');
+      }
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, [user, showNotification]);
 
   // Fetch Cart
   const fetchCart = useCallback(async () => {
@@ -77,6 +102,12 @@ export default function App() {
   useEffect(() => {
     fetchCart();
   }, [fetchCart]);
+
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      fetchOrders();
+    }
+  }, [activeTab, fetchOrders, ordersPage]);
 
   // Debounce Search
   useEffect(() => {
@@ -126,92 +157,197 @@ export default function App() {
         onTabChange={setActiveTab}
       />
 
-      {/* Main Dashboard / Shop Area */}
+      {/* Main Dashboard / Shop Area / Orders Area */}
       <main className="main-content">
-        <section className="hero-banner glass-panel">
-          <div className="hero-banner-content">
-            <span className="hero-badge">Special Welcome Offer</span>
-            <h1>Modern E-Commerce Store</h1>
-            <p>
-              Experience blazing fast catalog browsing and real-time cart queue processing built with state-of-the-art tech.
-            </p>
-            <button className="btn btn-primary" onClick={() => document.getElementById('catalog-search')?.focus()}>
-              <span>Explore Products</span>
-              <ArrowRight size={16} />
-            </button>
-          </div>
-        </section>
-
-        {/* Catalog Control Bar */}
-        <div className="catalog-controls">
-          <div className="search-bar-wrapper glass-panel">
-            <Search className="search-icon" size={18} />
-            <input 
-              id="catalog-search"
-              type="text" 
-              className="search-input" 
-              placeholder="Search products by title..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search && (
-              <button className="search-clear-btn" onClick={() => setSearch('')}>
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Product Grid */}
-        {productsLoading ? (
-          <div className="loading-state">
-            <div className="loading-spinner"></div>
-            <p>Retrieving products catalog...</p>
-          </div>
-        ) : products.length === 0 ? (
-          <div className="empty-catalog-state glass-panel">
-            <ShoppingBag size={48} className="empty-catalog-icon" />
-            <h3>No products found</h3>
-            <p>Try refining your search keyword or go back to previous pages.</p>
-          </div>
-        ) : (
+        {activeTab === 'shop' ? (
           <>
-            <div className="products-grid">
-              {products.map((product) => (
-                <ProductCard 
-                  key={product._id} 
-                  product={product} 
-                  onAddToCart={handleAddToCart}
-                  user={user}
-                />
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button 
-                  className="btn btn-outline btn-icon-only"
-                  disabled={page <= 1}
-                  onClick={() => setPage(p => Math.max(p - 1, 1))}
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                
-                <span className="pagination-text">
-                  Page <strong>{page}</strong> of {totalPages}
-                </span>
-
-                <button 
-                  className="btn btn-outline btn-icon-only"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(p => Math.min(p + 1, totalPages))}
-                >
-                  <ChevronRight size={20} />
+            <section className="hero-banner glass-panel">
+              <div className="hero-banner-content">
+                <span className="hero-badge">Special Welcome Offer</span>
+                <h1>Modern E-Commerce Store</h1>
+                <p>
+                  Experience blazing fast catalog browsing and real-time cart queue processing built with state-of-the-art tech.
+                </p>
+                <button className="btn btn-primary" onClick={() => document.getElementById('catalog-search')?.focus()}>
+                  <span>Explore Products</span>
+                  <ArrowRight size={16} />
                 </button>
               </div>
+            </section>
+
+            {/* Catalog Control Bar */}
+            <div className="catalog-controls">
+              <div className="search-bar-wrapper glass-panel">
+                <Search className="search-icon" size={18} />
+                <input 
+                  id="catalog-search"
+                  type="text" 
+                  className="search-input" 
+                  placeholder="Search products by title..." 
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                {search && (
+                  <button className="search-clear-btn" onClick={() => setSearch('')}>
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Product Grid */}
+            {productsLoading ? (
+              <div className="loading-state">
+                <div className="loading-spinner"></div>
+                <p>Retrieving products catalog...</p>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="empty-catalog-state glass-panel">
+                <ShoppingBag size={48} className="empty-catalog-icon" />
+                <h3>No products found</h3>
+                <p>Try refining your search keyword or go back to previous pages.</p>
+              </div>
+            ) : (
+              <>
+                <div className="products-grid">
+                  {products.map((product) => (
+                    <ProductCard 
+                      key={product._id} 
+                      product={product} 
+                      onAddToCart={handleAddToCart}
+                      user={user}
+                    />
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="pagination">
+                    <button 
+                      className="btn btn-outline btn-icon-only"
+                      disabled={page <= 1}
+                      onClick={() => setPage(p => Math.max(p - 1, 1))}
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    
+                    <span className="pagination-text">
+                      Page <strong>{page}</strong> of {totalPages}
+                    </span>
+
+                    <button 
+                      className="btn btn-outline btn-icon-only"
+                      disabled={page >= totalPages}
+                      onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </>
+        ) : (
+          <div className="orders-container">
+            <h2 className="orders-title">My Order History</h2>
+            
+            {ordersLoading ? (
+              <div className="loading-state">
+                <div className="loading-spinner"></div>
+                <p>Retrieving your order history...</p>
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="empty-catalog-state glass-panel">
+                <ShoppingBag size={48} className="empty-catalog-icon" />
+                <h3>No orders placed yet</h3>
+                <p>Add some products to your cart and place an order to see it here!</p>
+                <button className="btn btn-primary" style={{ marginTop: '16px' }} onClick={() => setActiveTab('shop')}>
+                  Go Shopping
+                </button>
+              </div>
+            ) : (
+              <div className="orders-list">
+                {orders.map((order) => {
+                  const statusColors = {
+                    PENDING: { bg: '#fffbeb', text: '#d97706', border: '#fef3c7' },
+                    CONFIRM: { bg: '#eff6ff', text: '#2563eb', border: '#dbeafe' },
+                    PROCESSED: { bg: '#f5f3ff', text: '#7c3aed', border: '#ede9fe' },
+                    SHIPPED: { bg: '#ecfeff', text: '#0891b2', border: '#cffafe' },
+                    DELIVERD: { bg: '#ecfdf5', text: '#059669', border: '#d1fae5' },
+                    CANCELLED: { bg: '#fef2f2', text: '#dc2626', border: '#fee2e2' },
+                    RETURNED: { bg: '#f3f4f6', text: '#4b5563', border: '#e5e7eb' },
+                  };
+                  const status = order.orderStatus || 'PENDING';
+                  const styleColors = statusColors[status] || statusColors.PENDING;
+                  
+                  return (
+                    <div key={order._id} className="order-card glass-panel">
+                      <div className="order-card-header">
+                        <div className="order-meta-info">
+                          <span className="order-number">{order.orderNumber}</span>
+                          <span className="order-date">
+                            Placed on {new Date(order.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <span 
+                          className="order-status-badge"
+                          style={{
+                            backgroundColor: styleColors.bg,
+                            color: styleColors.text,
+                            borderColor: styleColors.border
+                          }}
+                        >
+                          {status}
+                        </span>
+                      </div>
+                      
+                      <div className="order-card-body">
+                        <div className="order-details-grid">
+                          <div className="order-detail-col">
+                            <span className="detail-label">Items Count</span>
+                            <span className="detail-value">{(order.itemCount !== undefined ? order.itemCount : (order.items?.length || 0))} item{(order.itemCount !== undefined ? order.itemCount : (order.items?.length || 0)) !== 1 ? 's' : ''}</span>
+                          </div>
+                          <div className="order-detail-col">
+                            <span className="detail-label">Total Amount</span>
+                            <span className="detail-value total-amount">₹{(order.totalAmount !== undefined && order.totalAmount !== null ? order.totalAmount : (order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0)).toLocaleString()}</span>
+                          </div>
+                          <div className="order-detail-col">
+                            <span className="detail-label">Payment Status</span>
+                            <span className="detail-value text-capitalize">{order.paymentStatus || 'PENDING'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Orders Pagination */}
+                {ordersTotalPages > 1 && (
+                  <div className="pagination">
+                    <button 
+                      className="btn btn-outline btn-icon-only"
+                      disabled={ordersPage <= 1}
+                      onClick={() => setOrdersPage(p => Math.max(p - 1, 1))}
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    
+                    <span className="pagination-text">
+                      Page <strong>{ordersPage}</strong> of {ordersTotalPages}
+                    </span>
+
+                    <button 
+                      className="btn btn-outline btn-icon-only"
+                      disabled={ordersPage >= ordersTotalPages}
+                      onClick={() => setOrdersPage(p => Math.min(p + 1, ordersTotalPages))}
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </main>
 
@@ -441,6 +577,115 @@ export default function App() {
           .hero-banner h1 {
             font-size: 1.8rem;
           }
+        }
+
+        /* Orders Dashboard */
+        .orders-container {
+          text-align: left;
+          animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .orders-title {
+          font-size: 1.4rem;
+          font-weight: 700;
+          color: #212121;
+          margin-bottom: 24px;
+        }
+
+        .orders-list {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-bottom: 30px;
+        }
+
+        .order-card {
+          background: #fff;
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          padding: 20px;
+          box-shadow: var(--shadow-sm);
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .order-card:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
+        }
+
+        .order-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 1px solid #f0f0f0;
+          padding-bottom: 14px;
+          margin-bottom: 14px;
+        }
+
+        .order-meta-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .order-number {
+          font-size: 1rem;
+          font-weight: 700;
+          color: var(--primary);
+        }
+
+        .order-date {
+          font-size: 0.85rem;
+          color: var(--text-muted);
+        }
+
+        .order-status-badge {
+          font-size: 0.75rem;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: 2px;
+          border: 1px solid transparent;
+          text-transform: uppercase;
+        }
+
+        .order-details-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 16px;
+        }
+
+        .order-detail-col {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .detail-label {
+          font-size: 0.8rem;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+
+        .detail-value {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: var(--text-main);
+        }
+
+        .detail-value.total-amount {
+          color: #212121;
+          font-size: 1.05rem;
+          font-weight: 700;
+        }
+
+        .text-capitalize {
+          text-transform: capitalize;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>

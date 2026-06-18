@@ -132,7 +132,9 @@ export default function AuthView({ onClose, onSuccess, showNotification }) {
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0, 0, 0, 0.55);
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: var(--glass-blur);
+          -webkit-backdrop-filter: var(--glass-blur);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -143,47 +145,50 @@ export default function AuthView({ onClose, onSuccess, showNotification }) {
         .auth-modal {
           max-width: 400px;
           width: 100%;
-          padding: 30px 24px;
+          padding: 32px 24px;
           position: relative;
-          background: #fff;
-          border-radius: 2px;
+          background: rgba(10, 11, 16, 0.95);
+          border-radius: var(--radius-sm);
           box-shadow: var(--shadow-lg);
           border: 1px solid var(--border-color);
-          animation: modalAppear 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation: modalAppear 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         @keyframes modalAppear {
           from {
-            transform: scale(0.95);
+            transform: scale(0.95) translateY(10px);
             opacity: 0;
           }
           to {
-            transform: scale(1);
+            transform: scale(1) translateY(0);
             opacity: 1;
           }
         }
 
         .auth-close-btn {
           position: absolute;
-          top: 12px;
-          right: 12px;
+          top: 16px;
+          right: 16px;
           background: transparent;
           border: none;
           color: var(--text-muted);
           cursor: pointer;
-          padding: 4px;
+          padding: 6px;
+          border-radius: var(--radius-full);
           display: flex;
           align-items: center;
           justify-content: center;
+          transition: all 0.2s;
         }
 
         .auth-close-btn:hover {
           color: var(--text-main);
+          background: rgba(255, 255, 255, 0.05);
         }
 
         .auth-tabs {
           display: flex;
-          border-bottom: 2px solid var(--border-color);
+          border-bottom: 1px solid var(--border-color);
           margin-bottom: 24px;
         }
 
@@ -198,9 +203,10 @@ export default function AuthView({ onClose, onSuccess, showNotification }) {
           cursor: pointer;
           transition: all 0.2s;
           border-bottom: 2px solid transparent;
-          margin-bottom: -2px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+          margin-bottom: -1px;
+          text-transform: none;
+          letter-spacing: 0.2px;
+          font-family: var(--font-sans);
         }
 
         .auth-tab.active {
@@ -253,19 +259,22 @@ export default function AuthView({ onClose, onSuccess, showNotification }) {
         }
 
         .auth-submit-btn {
-          margin-top: 12px;
+          margin-top: 16px;
           width: 100%;
           padding: 12px;
           font-size: 0.95rem;
           font-weight: 700;
-          border-radius: 2px;
-          background: var(--action-orange); /* Orange action color for login submit */
+          border-radius: var(--radius-sm);
+          background: var(--primary);
           color: #fff;
-          text-transform: uppercase;
+          text-transform: none;
+          box-shadow: 0 4px 12px var(--primary-glow);
         }
 
         .auth-submit-btn:hover {
-          background: #e25817;
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px var(--primary-glow);
+          filter: brightness(1.1);
         }
 
         .btn-block {

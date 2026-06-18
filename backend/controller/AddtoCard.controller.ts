@@ -3,6 +3,7 @@ import { Cart } from "../models/card.model";
 import Product from "../models/product.model";
 import User, { AuthRequest } from "../models/user.model";
 import { cartQueue } from "../queue/cart.queue";
+import mongoose from "mongoose";
 
 export const addToCart = async (req: AuthRequest, res: Response) => {
     try {
@@ -151,3 +152,17 @@ export const removeFromCart = async (
         });
     }
 };
+
+
+// export const getAddtoCardAggragation = async(req:Request,res:Response)=>{
+//     try {
+//         // const userId  = mongoose.Schema.Types.ObjectId(user)
+//         const cart = await Cart.aggregate([
+//             {
+//                 $match:userId
+//             }
+//         ])
+//     } catch (error) {
+//         console.log(`getAddtoCardAggragation error ${error}`)
+//     }
+// }

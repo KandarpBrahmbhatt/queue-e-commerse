@@ -93,36 +93,41 @@ export default function ProductCard({ product, onAddToCart, user }) {
           flex-direction: column;
           height: 100%;
           overflow: hidden;
-          transition: box-shadow 0.2s ease-in-out;
-          border: 1px solid #f0f0f0;
-          background: #fff;
+          transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s, border-color 0.3s;
+          border: 1px solid var(--border-color);
+          background: var(--bg-surface);
+          backdrop-filter: var(--glass-blur);
+          -webkit-backdrop-filter: var(--glass-blur);
+          border-radius: var(--radius-sm);
         }
 
         .product-card:hover {
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          transform: translateY(-6px);
+          box-shadow: 0 12px 30px var(--primary-glow);
+          border-color: rgba(139, 92, 246, 0.3);
         }
 
         .product-image-container {
           height: 180px;
           position: relative;
-          background: #fff;
+          background: rgba(0, 0, 0, 0.2);
           overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 12px;
-          border-bottom: 1px solid #f0f0f0;
+          padding: 16px;
+          border-bottom: 1px solid var(--border-color);
         }
 
         .product-image {
           max-width: 100%;
           max-height: 100%;
           object-fit: contain;
-          transition: transform 0.3s ease;
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .product-card:hover .product-image {
-          transform: scale(1.04);
+          transform: scale(1.06);
         }
 
         .product-image-fallback {
@@ -137,12 +142,12 @@ export default function ProductCard({ product, onAddToCart, user }) {
         .fallback-text {
           font-size: 3rem;
           font-weight: 700;
-          color: rgba(255, 255, 255, 0.7);
+          color: rgba(255, 255, 255, 0.5);
         }
 
         .badge {
           position: absolute;
-          padding: 2px 6px;
+          padding: 4px 8px;
           border-radius: var(--radius-xs);
           font-size: 0.7rem;
           font-weight: 700;
@@ -152,20 +157,21 @@ export default function ProductCard({ product, onAddToCart, user }) {
         .stock-badge {
           top: 8px;
           left: 8px;
-          background: #d32f2f;
+          background: var(--danger);
           color: #fff;
+          box-shadow: 0 2px 8px var(--danger-glow);
         }
 
         .product-info {
-          padding: 14px;
+          padding: 16px;
           display: flex;
           flex-direction: column;
           flex: 1;
         }
 
         .product-title {
-          font-size: 0.95rem;
-          font-weight: 500;
+          font-size: 1rem;
+          font-weight: 600;
           color: var(--text-main);
           margin-bottom: 6px;
           text-align: left;
@@ -192,9 +198,10 @@ export default function ProductCard({ product, onAddToCart, user }) {
           font-size: 0.75rem;
           font-weight: 700;
           color: #fff;
-          background: var(--rating-green); /* Rating Green */
+          background: var(--rating-green);
           padding: 2px 6px;
-          border-radius: 3px;
+          border-radius: 4px;
+          box-shadow: 0 2px 6px var(--secondary-glow);
         }
 
         .star-icon {
@@ -208,7 +215,7 @@ export default function ProductCard({ product, onAddToCart, user }) {
         }
 
         .product-desc {
-          font-size: 0.8rem;
+          font-size: 0.85rem;
           color: var(--text-muted);
           line-height: 1.4;
           text-align: left;
@@ -216,7 +223,7 @@ export default function ProductCard({ product, onAddToCart, user }) {
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
-          height: 34px;
+          height: 38px;
           margin-bottom: 12px;
         }
 
@@ -242,7 +249,7 @@ export default function ProductCard({ product, onAddToCart, user }) {
         }
 
         .price-current {
-          font-size: 1.15rem;
+          font-size: 1.2rem;
           font-weight: 700;
           color: var(--text-main);
         }
@@ -261,17 +268,25 @@ export default function ProductCard({ product, onAddToCart, user }) {
 
         .stock-warning {
           font-size: 0.75rem;
-          color: #d32f2f;
+          color: var(--danger);
           font-weight: 700;
         }
 
         .btn-add-cart {
-          padding: 6px 14px;
+          padding: 8px 16px;
           font-size: 0.8rem;
           font-weight: 700;
-          border-radius: 2px;
-          text-transform: uppercase;
-          border: 1px solid #e0e0e0;
+          border-radius: var(--radius-xs);
+          text-transform: none;
+          background: var(--primary);
+          color: #fff;
+          box-shadow: 0 4px 10px var(--primary-glow);
+        }
+
+        .btn-add-cart:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 14px var(--primary-glow);
+          filter: brightness(1.1);
         }
 
         .out-of-stock {
@@ -279,11 +294,11 @@ export default function ProductCard({ product, onAddToCart, user }) {
         }
         
         .out-of-stock .btn-add-cart {
-          background: #f0f0f0;
+          background: rgba(255, 255, 255, 0.05);
           color: var(--text-muted);
           box-shadow: none;
           cursor: not-allowed;
-          border-color: #d0d0d0;
+          border-color: var(--border-color);
         }
       `}</style>
     </div>
