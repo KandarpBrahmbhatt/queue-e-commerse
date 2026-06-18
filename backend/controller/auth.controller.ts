@@ -29,10 +29,41 @@ export const signup = async (req: Request, res: Response) => {
 
         //producer
         await emailQueue.add("welcome-email", {
+            email: user.email,
+            name: user.name,
             to: email,
             subject: "Welcome",
             message: "Welcome to our application"
         });
+
+        // Retry Mechanism =>BullMQ supports retries automatically.
+
+        await emailQueue.add(
+            "welcome-email",
+            user,
+            {
+                attempts: 3
+            }
+        );
+
+        // Delayed Jobs => Run jobs after a delay.
+
+        emailQueue.add(
+            "reminder-email",
+            user,
+            {
+                delay: 60 * 60 * 1000
+            }
+        );
+
+        // Repeatable Jobs =>Example: Generate daily reports.
+
+        emailQueue.add("daily-report",{},{
+                repeat: {
+                    every: 24 * 60 * 60 * 1000
+                }
+            }
+        );
         // await emailQueue.add("welcome-email", {
         //     email: user.email,
         //     name: user.name,

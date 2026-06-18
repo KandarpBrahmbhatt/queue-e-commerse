@@ -10,7 +10,7 @@ import { connection } from "../config/redis";
 //             job.data.name
 //         );
 
-//         console.log(`✅ Welcome email sent to ${job.data.email}`);
+//         console.log(` Welcome email sent to ${job.data.email}`);
 //     },
 //     {
 //         connection:connection as any,
@@ -18,16 +18,12 @@ import { connection } from "../config/redis";
 // );
 
 
-const worker = new Worker(  "emailQueue",
-    async (job) => {
+const worker = new Worker("emailQueue",async (job) => {
         console.log("Processing Job:", job.id);
-
         console.log(`Sending email to ${job.data.email}`);
-
         await new Promise((resolve) =>
             setTimeout(resolve, 5000)
         );
-
         console.log("Email Sent");
     },
     {

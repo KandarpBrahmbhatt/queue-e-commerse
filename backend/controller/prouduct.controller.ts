@@ -1,5 +1,6 @@
 import {Request,Response} from 'express'
 import Product from '../models/product.model'
+import mongoose from 'mongoose'
 
 
 export const createProudct = async(req:Request,res:Response)=>{
@@ -91,3 +92,232 @@ export const deletedProduct = async(req:Request,res:Response)=>{
         return res.status(200).json({message:"product deleted sucessfully"})
     }
 }
+
+
+
+
+
+export const getAggregationProduct = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+/*
+
+        page       => Current page number
+        limit      => Records per page
+        search     => Search by name/description
+        category   => Category ObjectId
+        status     => ACTIVE/INACTIVE/DRAFT
+        sortBy     => price/createdAt/name
+        sortOrder  => asc/desc
+
+        Example:
+        /api/product/get?page=1&limit=10
+        /api/product/get?search=iphone
+        /api/product/get?category=123
+        /api/product/get?sortBy=price&sortOrder=desc
+
+        */
+
+        const {
+            page = "1",
+            limit = "10",
+            search,
+            category,
+            status,
+            sortBy = "createdAt",
+            sortOrder = "desc",
+        } = req.query;
+
+        const pageNumber = Number(page);
+        const limitNumber = Number(limit);
+
+        const skip = (pageNumber - 1) * limitNumber;
+
+        /*
+        =====================================
+        Dynamic Match Object
+        =====================================
+        */
+
+        const matchStage: any = {
+            isDeleted: false,
+        };
+
+        /*
+        Search Product
+        Uses Text Index:
+        productSchema.index({
+            name: "text",
+            description: "text"
+        })
+        */
+
+        if (search) {
+            matchStage.$text = {
+                $search: String(search),
+            };
+        }
+
+        /*
+        Filter by Category
+        */
+
+        if (
+            category &&
+            mongoose.Types.ObjectId.isValid(
+                String(category)
+            )
+        ) {
+            matchStage.category =
+                new mongoose.Types.ObjectId(
+                    String(category)
+                );
+        }
+
+        /*
+        Filter by Status
+        */
+
+        if (status) {
+            matchStage.status = status;
+        }
+
+        /*
+        =====================================
+        Sorting
+        =====================================
+        */
+
+        const sortStage: any = {};
+
+        sortStage[String(sortBy)] =
+            sortOrder === "asc" ? 1 : -1;
+
+        /*
+        =====================================
+        Aggregation Pipeline
+        =====================================
+        */
+
+        const products = await Product.aggregate([
+
+            /*
+            Apply Filters
+            */
+            {
+                $match: matchStage,
+            },
+
+            /*
+            Populate Category
+            */
+            {
+                $lookup: {
+                    from: "categories",
+                    localField: "category",
+                    foreignField: "_id",
+                    as: "category",
+                },
+            },
+
+            /*
+            Convert Category Array to Object
+            */
+            {
+                $unwind: {
+                    path: "$category",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+
+            /*
+            Sorting
+            */
+            {
+                $sort: sortStage,
+            },
+
+            /*
+            Pagination + Total Count
+            */
+            {
+                $facet: {
+
+                    /*
+                    Product List
+                    */
+                    products: [
+                        {
+                            $skip: skip,
+                        },
+                        {
+                            $limit: limitNumber,
+                        },
+                    ],
+
+                    /*
+                    Total Count
+                    */
+                    totalCount: [
+                        {
+                            $count: "count",
+                        },
+                    ],
+                },
+            },
+        ]);
+
+        /*
+        =====================================
+        Extract Result
+        =====================================
+        */
+
+        const productList =products[0].products;
+
+        const total =products[0].totalCount[0]?.count || 0;
+
+        const totalPages = Math.ceil(
+            total / limitNumber
+        );
+
+        /*
+        =====================================
+        Response
+        =====================================
+        */
+
+        return res.status(200).json({
+            success: true,
+
+            data: productList,
+
+            pagination: {
+                total,
+                totalPages,
+                currentPage: pageNumber,
+                limit: limitNumber,
+                hasNextPage:
+                    pageNumber < totalPages,
+                hasPreviousPage:
+                    pageNumber > 1,
+            },
+        });
+
+    } catch (error) {
+
+        console.log(
+            "getAllProduct error",
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            message:
+                "Failed to fetch products",
+            error,
+        });
+    }
+};

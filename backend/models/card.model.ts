@@ -151,6 +151,7 @@ export interface ICartItem {
 export interface ICart extends Document {
     user: mongoose.Types.ObjectId;
     items: ICartItem[];
+    totalAmount: number
 }
 
 const cartSchema = new Schema<ICart>(
@@ -177,8 +178,12 @@ const cartSchema = new Schema<ICart>(
                     type: Number,
                     required: true,
                 },
+
             },
         ],
+        totalAmount: {
+            type: Number
+        }
     },
     {
         timestamps: true,
