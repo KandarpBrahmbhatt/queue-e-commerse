@@ -1,35 +1,35 @@
-import {Request,Response} from 'express'
+import { Request, Response } from 'express'
 import Product from '../models/product.model'
 import mongoose from 'mongoose'
 
 
-export const createProudct = async(req:Request,res:Response)=>{
+export const createProudct = async (req: Request, res: Response) => {
     try {
-        const {name,slug,description,sku,price,stock,category,images} = req.body
+        const { name, slug, description, sku, price, stock, category, images } = req.body
         console.log(req.body)
 
-        if (!name || !slug || !description ||!sku ||!price ||!stock ||!category) {
-            return res.status(400).json({meesage:"all field are required"})
+        if (!name || !slug || !description || !sku || !price || !stock || !category) {
+            return res.status(400).json({ meesage: "all field are required" })
         }
 
-        const product  = await Product.findOne({name})
+        const product = await Product.findOne({ name })
 
         if (product) {
-            return res.status(400).json({message:"productalready exist"})
+            return res.status(400).json({ message: "productalready exist" })
         }
 
         const newProduct = await Product.create({
-            name,slug,description,sku,price,stock,category,images
+            name, slug, description, sku, price, stock, category, images
         })
 
-        return res.status(200).json({message:"product created sucessfully",newProduct})
+        return res.status(200).json({ message: "product created sucessfully", newProduct })
     } catch (error) {
-        console.log("createProduct error",error)
-        return res.status(500).json({message:"created product error",error})
+        console.log("createProduct error", error)
+        return res.status(500).json({ message: "created product error", error })
     }
 }
 
-export const getAllProduct = async(req:Request,res:Response)=>{
+export const getAllProduct = async (req: Request, res: Response) => {
     try {
 
         // pagination
@@ -37,59 +37,59 @@ export const getAllProduct = async(req:Request,res:Response)=>{
         const limit = Number(req.query.limit) || 10
 
         //search 
-        const keyword  = req.query.search || "";
+        const keyword = req.query.search || "";
 
         const prouduct = await Product.find()
-            .skip((page-1) * limit)
+            .skip((page - 1) * limit)
             .limit(limit)
-            .sort({createdAt:-1})
+            .sort({ createdAt: -1 })
 
         if (!prouduct) {
-            return res.status(400).json({message:"product not found"})
+            return res.status(400).json({ message: "product not found" })
         }
-        
+
         const total = await Product.countDocuments()
 
-        return res.status(200).json({message:"product getting sucessfully",prouduct,total,totalPages: Math.ceil(total / limit),})
+        return res.status(200).json({ message: "product getting sucessfully", prouduct, total, totalPages: Math.ceil(total / limit), })
     } catch (error) {
-        console.log("getProduct error",error)
-        return res.status(500).json({message:"product getting error",error})
+        console.log("getProduct error", error)
+        return res.status(500).json({ message: "product getting error", error })
     }
 }
 
 
-export const updateProduct = async(req:Request,res:Response)=>{
+export const updateProduct = async (req: Request, res: Response) => {
     try {
         const productId = req.params.id
 
-        const product  = await Product.findByIdAndUpdate(productId,req.body,{new:true})
+        const product = await Product.findByIdAndUpdate(productId, req.body, { new: true })
 
         if (!product) {
-            return res.status(400).json({message:"product not found",product})
+            return res.status(400).json({ message: "product not found", product })
         }
 
-        return res.status(200).json({message:"productUpdated sucessfully",product})
+        return res.status(200).json({ message: "productUpdated sucessfully", product })
 
     } catch (error) {
-        console.log("deletedProduct error",error)
-        return res.status(200).json({message:"productUpdated sucessfully",error})
+        console.log("deletedProduct error", error)
+        return res.status(200).json({ message: "productUpdated sucessfully", error })
 
     }
 }
 
-export const deletedProduct = async(req:Request,res:Response)=>{
+export const deletedProduct = async (req: Request, res: Response) => {
     try {
         const productId = req.params.id
         const product = await Product.findByIdAndDelete(productId)
 
         if (!product) {
-            return res.status(200).json({message:"product not found"})
+            return res.status(200).json({ message: "product not found" })
         }
 
-        return res.status(200).json({message:"product deleted sucessfully",isDeleted:true})
+        return res.status(200).json({ message: "product deleted sucessfully", isDeleted: true })
     } catch (error) {
-        console.log("updateProduct error",error)
-        return res.status(200).json({message:"product deleted sucessfully"})
+        console.log("updateProduct error", error)
+        return res.status(200).json({ message: "product deleted sucessfully" })
     }
 }
 
@@ -97,28 +97,29 @@ export const deletedProduct = async(req:Request,res:Response)=>{
 
 
 
-export const getAggregationProduct = async (req: Request,res: Response) => {
+export const getAggregationProduct = async (req: Request, res: Response) => {
 
+console.log("API HIT")
 
     try {
-/*
-
-        page       => Current page number
-        limit      => Records per page
-        search     => Search by name/description
-        category   => Category ObjectId
-        status     => ACTIVE/INACTIVE/DRAFT
-        sortBy     => price/createdAt/name
-        sortOrder  => asc/desc
-
-        Example:
-        /api/product/get?page=1&limit=10
-        /api/product/get?search=iphone
-        /api/product/get?category=123
-        /api/product/get?sortBy=price&sortOrder=desc
-
-        */
-
+        /*
+        
+                page       => Current page number
+                limit      => Records per page
+                search     => Search by name/description
+                category   => Category ObjectId
+                status     => ACTIVE/INACTIVE/DRAFT
+                sortBy     => price/createdAt/name
+                sortOrder  => asc/desc
+        
+                Example:
+                /api/product/get?page=1&limit=10
+                /api/product/get?search=iphone
+                /api/product/get?category=123
+                /api/product/get?sortBy=price&sortOrder=desc
+        
+                */
+        console.log("API HIT");
         const {
             page = "1",
             limit = "10",
@@ -200,18 +201,23 @@ export const getAggregationProduct = async (req: Request,res: Response) => {
         =====================================
         */
 
-        const products = await Product.aggregate([
+        // Count query
+        const total = await Product.countDocuments(matchStage);
 
-            /*
-            Apply Filters
-            */
+        // Paginated aggregation query
+        const productList = await Product.aggregate([
             {
                 $match: matchStage,
             },
-
-            /*
-            Populate Category
-            */
+            {
+                $sort: sortStage as any,
+            },
+            {
+                $skip: skip,
+            },
+            {
+                $limit: limitNumber,
+            },
             {
                 $lookup: {
                     from: "categories",
@@ -220,63 +226,13 @@ export const getAggregationProduct = async (req: Request,res: Response) => {
                     as: "category",
                 },
             },
-
-            /*
-            Convert Category Array to Object
-            */
             {
                 $unwind: {
                     path: "$category",
                     preserveNullAndEmptyArrays: true,
                 },
             },
-
-            /*
-            Sorting
-            */
-            {
-                $sort: sortStage,
-            },
-
-            /*
-            Pagination + Total Count
-            */
-            {
-                $facet: {
-
-                    /*
-                    Product List
-                    */
-                    products: [
-                        {
-                            $skip: skip,
-                        },
-                        {
-                            $limit: limitNumber,
-                        },
-                    ],
-
-                    /*
-                    Total Count
-                    */
-                    totalCount: [
-                        {
-                            $count: "count",
-                        },
-                    ],
-                },
-            },
         ]);
-
-        /*
-        =====================================
-        Extract Result
-        =====================================
-        */
-
-        const productList =products[0].products;
-
-        const total =products[0].totalCount[0]?.count || 0;
 
         const totalPages = Math.ceil(
             total / limitNumber

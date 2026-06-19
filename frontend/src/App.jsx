@@ -31,6 +31,7 @@ export default function App() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersTotalPages, setOrdersTotalPages] = useState(1);
+  const [payingOrderId, setPayingOrderId] = useState(null);
 
   // Sync user profile to localStorage
   useEffect(() => {
@@ -133,6 +134,23 @@ export default function App() {
       showNotification('Product added to cart!', 'success');
     } catch (err) {
       showNotification(err.message || 'Could not add product', 'error');
+    }
+  };
+
+  const handlePayNow = async (orderId) => {
+    setPayingOrderId(orderId);
+    try {
+      showNotification('Redirecting to Stripe checkout...', 'info');
+      const response = await api.payment.create(orderId);
+      if (response.success && response.checkoutUrl) {
+        window.location.href = response.checkoutUrl;
+      } else {
+        throw new Error('Failed to retrieve secure checkout link');
+      }
+    } catch (err) {
+      showNotification('Payment failed: ' + err.message, 'error');
+    } finally {
+      setPayingOrderId(null);
     }
   };
 
@@ -280,6 +298,28 @@ export default function App() {
                   const status = order.orderStatus || 'PENDING';
                   const styleColors = statusColors[status] || statusColors.PENDING;
                   
+                  const isCancelledOrReturned = status === 'CANCELLED' || status === 'RETURNED';
+                  const step1 = true;
+                  const step2 = order.paymentStatus === 'PAID' || ['CONFIRM', 'PROCESSED', 'SHIPPED', 'DELIVERD'].includes(status);
+                  const step3 = ['SHIPPED', 'DELIVERD'].includes(status);
+                  const step4 = status === 'DELIVERD';
+
+                  let fillPercentage = 0;
+                  if (step4) fillPercentage = 100;
+                  else if (step3) fillPercentage = 66.6;
+                  else if (step2) fillPercentage = 33.3;
+
+                  const isCompleted1 = step2;
+                  const isCompleted2 = step3;
+                  const isCompleted3 = step4;
+
+                  const isActive1 = step1 && !step2;
+                  const isActive2 = step2 && !step3;
+                  const isActive3 = step3 && !step4;
+                  const isActive4 = step4;
+
+                  const isPendingPayment = order.paymentStatus !== 'PAID' && !isCancelledOrReturned;
+
                   return (
                     <div key={order._id} className="order-card glass-panel">
                       <div className="order-card-header">
@@ -316,6 +356,49 @@ export default function App() {
                             <span className="detail-value text-capitalize">{order.paymentStatus || 'PENDING'}</span>
                           </div>
                         </div>
+
+                        {/* Stepped Progress Tracker */}
+                        {!isCancelledOrReturned && (
+                          <div className="order-progress-tracker" aria-hidden="true">
+                            <div className="progress-bar-line">
+                              <div 
+                                className="progress-bar-fill" 
+                                style={{ width: `${fillPercentage}%` }}
+                              ></div>
+                            </div>
+                            <div className="progress-steps">
+                              <div className={`progress-step ${isCompleted1 ? 'completed' : ''} ${isActive1 ? 'active' : ''}`}>
+                                <div className="step-circle">1</div>
+                                <span className="step-label">Ordered</span>
+                              </div>
+                              <div className={`progress-step ${isCompleted2 ? 'completed' : ''} ${isActive2 ? 'active' : ''}`}>
+                                <div className="step-circle">2</div>
+                                <span className="step-label">Paid</span>
+                              </div>
+                              <div className={`progress-step ${isCompleted3 ? 'completed' : ''} ${isActive3 ? 'active' : ''}`}>
+                                <div className="step-circle">3</div>
+                                <span className="step-label">Shipped</span>
+                              </div>
+                              <div className={`progress-step ${isActive4 ? 'active' : ''}`}>
+                                <div className="step-circle">4</div>
+                                <span className="step-label">Delivered</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Pay Now Action button */}
+                        {isPendingPayment && (
+                          <div className="pay-now-container">
+                            <button 
+                              className="btn-pay-now"
+                              disabled={payingOrderId === order._id}
+                              onClick={() => handlePayNow(order._id)}
+                            >
+                              <span>{payingOrderId === order._id ? 'Processing...' : 'Pay Now'}</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

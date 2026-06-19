@@ -34,7 +34,8 @@ export const sendOrderConfirmationEmail = async (
     email: string,
     name: string,
     orderNumber: string,
-    totalAmount: number
+    totalAmount: number,
+    pdfPath:string
 ) => {
 
     await transporter.sendMail({
@@ -61,5 +62,42 @@ export const sendOrderConfirmationEmail = async (
 
             <p>Thank you for shopping with us.</p>
         `,
+           attachments: [
+            {
+                filename: "invoice.pdf",
+                path: pdfPath,
+            },
+        ],
+    });
+};
+
+
+
+export const sendInvoiceEmail = async (email: string,name: string,orderNumber: string,pdfPath: string) => {
+
+    await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+
+        subject: "Payment Successful",
+
+        html: `
+            <h2>Hello ${name},</h2>
+
+            <p>Your payment was successful.</p>
+
+            <p>Order Number: ${orderNumber}</p>
+
+            <p>Your invoice is attached.</p>
+
+            <p>Thank you for shopping with us.</p>
+        `,
+
+        attachments: [
+            {
+                filename: `invoice-${orderNumber}.pdf`,
+                path: pdfPath,
+            },
+        ],
     });
 };

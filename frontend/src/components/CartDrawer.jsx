@@ -49,9 +49,17 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
     setCheckingOut(true);
     try {
       const response = await api.orders.create();
-      showNotification(`Order placed successfully! Order Number: ${response.order?.orderNumber || ''}`, 'success');
+      showNotification('Order placed successfully! Redirecting to checkout...', 'success');
       onCartChange({ items: [] });
       onClose();
+      
+      // Request Stripe Payment Session and Redirect
+      const paymentRes = await api.payment.create(response.order._id);
+      if (paymentRes.success && paymentRes.checkoutUrl) {
+        window.location.href = paymentRes.checkoutUrl;
+      } else {
+        throw new Error('Failed to generate secure payment URL');
+      }
     } catch (err) {
       showNotification('Checkout failed: ' + err.message, 'error');
     } finally {

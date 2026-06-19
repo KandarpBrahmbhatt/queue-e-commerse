@@ -64,4 +64,11 @@ export const api = {
         method: 'DELETE',
       }),
   },
+  payment: {
+    create: (orderId) =>
+      request('/payment/create', {
+        method: 'POST',
+        body: JSON.stringify({ orderId }),
+      }),
+  },
 };

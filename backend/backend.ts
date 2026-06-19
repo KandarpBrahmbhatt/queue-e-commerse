@@ -5,8 +5,16 @@ import productRouter from './routes/product.routes';
 import cookieParser from 'cookie-parser'
 import cartRouter from './routes/card.routes';
 import orderRouter from './routes/order.routes';
+import paymentRouter from './routes/payment.routes';
+import { stripeWebhook } from './controller/payment.controller';
+import pdfRouter from './routes/pdf.routes';
 
 const app = express()
+
+// Stripe webhooks require the raw request body (Buffer) to verify the cryptographic signature.
+// Using express.raw() middleware specifically for this route preserves the raw body.
+// This route must be registered before express.json() is applied globally.
+app.use("/api/payment/webhook", express.raw({ type: "application/json" }), stripeWebhook)
 app.use(express.json())
 app.use(cookieParser())
 
@@ -14,6 +22,8 @@ app.use("/api/auth",authRouter)
 app.use("/api/product",productRouter)
 app.use("/api/cart", cartRouter);
 app.use("/api/order",orderRouter)
+app.use("/api/payment",paymentRouter)
+app.use("/api/invoice",pdfRouter)
 const port = 5000
 app.listen(port, () => {
     console.log(`Server Running ${port}`);
