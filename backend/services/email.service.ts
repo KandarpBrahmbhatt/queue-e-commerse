@@ -35,16 +35,12 @@ export const sendOrderConfirmationEmail = async (
     name: string,
     orderNumber: string,
     totalAmount: number,
-    pdfPath:string
+    pdfPath?: string
 ) => {
-
-    await transporter.sendMail({
+    const mailOptions: any = {
         from: process.env.EMAIL_USER,
-
         to: email,
-
         subject: "Order Confirmation",
-
         html: `
             <h2>Hello ${name},</h2>
 
@@ -62,13 +58,18 @@ export const sendOrderConfirmationEmail = async (
 
             <p>Thank you for shopping with us.</p>
         `,
-           attachments: [
+    };
+
+    if (pdfPath) {
+        mailOptions.attachments = [
             {
                 filename: "invoice.pdf",
                 path: pdfPath,
             },
-        ],
-    });
+        ];
+    }
+
+    await transporter.sendMail(mailOptions);
 };
 
 
@@ -99,5 +100,18 @@ export const sendInvoiceEmail = async (email: string,name: string,orderNumber: s
                 path: pdfPath,
             },
         ],
+    });
+};
+
+
+export const sendOTP = async (to: string,otp: string) => {
+    await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to,
+        subject: "Reset Your Password",
+        html: `
+            <p>Your OTP for password reset is <b>${otp}</b>.</p>
+            <p>It expires in 5 minutes.</p>
+        `,
     });
 };

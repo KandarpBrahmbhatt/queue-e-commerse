@@ -3,6 +3,7 @@ import connection from "../config/redis";
 import connectdb from "../config/db";
 import Order from "../models/order.model";
 import User from "../models/user.model";
+import Product from "../models/product.model";
 
 import { generateInvoice } from "../utils/pdf";
 import { sendInvoiceEmail } from "../services/email.service";
@@ -39,3 +40,15 @@ const worker = new Worker(
         connection: connection as any,
     }
 );
+
+worker.on("active", (job) => {
+    console.log(`Invoice Job ${job.id} active (processing)`);
+});
+
+worker.on("completed", (job) => {
+    console.log(`Invoice Job ${job.id} completed`);
+});
+
+worker.on("failed", (job, err) => {
+    console.error(`Invoice Job ${job?.id} failed:`, err);
+});

@@ -9,6 +9,12 @@ import paymentRouter from './routes/payment.routes';
 import { stripeWebhook } from './controller/payment.controller';
 import pdfRouter from './routes/pdf.routes';
 
+// Import workers to start listening and processing background queue jobs
+import './worker/cart.worker';
+import './worker/email.worker';
+import './worker/invoice.worker';
+import './worker/order.worker';
+
 const app = express()
 
 // Stripe webhooks require the raw request body (Buffer) to verify the cryptographic signature.
