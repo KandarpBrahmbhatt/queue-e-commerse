@@ -32,6 +32,21 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       }),
+    sendOtp: (email) =>
+      request('/auth/sendotp', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }),
+    verifyOtp: (email, otp) =>
+      request('/auth/verifyotp', {
+        method: 'POST',
+        body: JSON.stringify({ email, otp }),
+      }),
+    resetPassword: (email, password) =>
+      request('/auth/resetpassword', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      }),
   },
   products: {
     getAggregation: (page = 1, limit = 10, search = '') => {

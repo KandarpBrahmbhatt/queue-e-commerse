@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import Product from '../models/product.model'
 import mongoose from 'mongoose'
+import connection from '../config/redis'
 
 
 export const createProudct = async (req: Request, res: Response) => {
@@ -94,32 +95,13 @@ export const deletedProduct = async (req: Request, res: Response) => {
 }
 
 
-
-
-
-export const getAggregationProduct = async (req: Request, res: Response) => {
-
-console.log("API HIT")
+export const getAggregationProduct = async (
+    req: Request,
+    res: Response
+) => {
+    console.log("API HIT");
 
     try {
-        /*
-        
-                page       => Current page number
-                limit      => Records per page
-                search     => Search by name/description
-                category   => Category ObjectId
-                status     => ACTIVE/INACTIVE/DRAFT
-                sortBy     => price/createdAt/name
-                sortOrder  => asc/desc
-        
-                Example:
-                /api/product/get?page=1&limit=10
-                /api/product/get?search=iphone
-                /api/product/get?category=123
-                /api/product/get?sortBy=price&sortOrder=desc
-        
-                */
-        console.log("API HIT");
         const {
             page = "1",
             limit = "10",
@@ -137,6 +119,40 @@ console.log("API HIT")
 
         /*
         =====================================
+        Redis Cache Key
+        =====================================
+        */
+
+        const cacheKey = `products:
+page=${page}:
+limit=${limit}:
+search=${search || ""}:
+category=${category || ""}:
+status=${status || ""}:
+sortBy=${sortBy}:
+sortOrder=${sortOrder}`;
+
+        /*
+        =====================================
+        Check Redis
+        =====================================
+        */
+
+        const cached = await connection.get(cacheKey);
+if (cached) {
+    console.log(" CACHE HIT");
+
+    const redisData = JSON.parse(cached);
+
+    redisData.source = "redis";
+
+    return res.status(200).json(redisData);
+}
+
+        console.log(" CACHE MISS");
+
+        /*
+        =====================================
         Dynamic Match Object
         =====================================
         */
@@ -146,12 +162,7 @@ console.log("API HIT")
         };
 
         /*
-        Search Product
-        Uses Text Index:
-        productSchema.index({
-            name: "text",
-            description: "text"
-        })
+        Search
         */
 
         if (search) {
@@ -161,7 +172,7 @@ console.log("API HIT")
         }
 
         /*
-        Filter by Category
+        Category Filter
         */
 
         if (
@@ -177,7 +188,7 @@ console.log("API HIT")
         }
 
         /*
-        Filter by Status
+        Status Filter
         */
 
         if (status) {
@@ -185,9 +196,7 @@ console.log("API HIT")
         }
 
         /*
-        =====================================
         Sorting
-        =====================================
         */
 
         const sortStage: any = {};
@@ -197,42 +206,42 @@ console.log("API HIT")
 
         /*
         =====================================
-        Aggregation Pipeline
+        MongoDB Queries
         =====================================
         */
 
-        // Count query
-        const total = await Product.countDocuments(matchStage);
+        const total =
+            await Product.countDocuments(matchStage);
 
-        // Paginated aggregation query
-        const productList = await Product.aggregate([
-            {
-                $match: matchStage,
-            },
-            {
-                $sort: sortStage as any,
-            },
-            {
-                $skip: skip,
-            },
-            {
-                $limit: limitNumber,
-            },
-            {
-                $lookup: {
-                    from: "categories",
-                    localField: "category",
-                    foreignField: "_id",
-                    as: "category",
+        const productList =
+            await Product.aggregate([
+                {
+                    $match: matchStage,
                 },
-            },
-            {
-                $unwind: {
-                    path: "$category",
-                    preserveNullAndEmptyArrays: true,
+                {
+                    $sort: sortStage,
                 },
-            },
-        ]);
+                {
+                    $skip: skip,
+                },
+                {
+                    $limit: limitNumber,
+                },
+                {
+                    $lookup: {
+                        from: "categories",
+                        localField: "category",
+                        foreignField: "_id",
+                        as: "category",
+                    },
+                },
+                {
+                    $unwind: {
+                        path: "$category",
+                        preserveNullAndEmptyArrays: true,
+                    },
+                },
+            ]);
 
         const totalPages = Math.ceil(
             total / limitNumber
@@ -240,15 +249,14 @@ console.log("API HIT")
 
         /*
         =====================================
-        Response
+        Final Response
         =====================================
         */
 
-        return res.status(200).json({
+        const response = {
             success: true,
-
+            source: "mongodb",
             data: productList,
-
             pagination: {
                 total,
                 totalPages,
@@ -259,12 +267,26 @@ console.log("API HIT")
                 hasPreviousPage:
                     pageNumber > 1,
             },
-        });
+        };
+
+        /*
+        =====================================
+        Save to Redis
+        =====================================
+        */
+await connection.setex(
+    cacheKey,
+    300,
+    JSON.stringify(response),
+);
+
+        console.log(" Cached in Redis");
+
+        return res.status(200).json(response);
 
     } catch (error) {
-
         console.log(
-            "getAllProduct error",
+            "getAggregationProduct error",
             error
         );
 
@@ -276,3 +298,193 @@ console.log("API HIT")
         });
     }
 };
+
+
+
+// export const getAggregationProduct = async (req: Request, res: Response) => {
+
+//     console.log("API HIT")
+
+//     try {
+//         /*
+        
+//                 page       => Current page number
+//                 limit      => Records per page
+//                 search     => Search by name/description
+//                 category   => Category ObjectId
+//                 status     => ACTIVE/INACTIVE/DRAFT
+//                 sortBy     => price/createdAt/name
+//                 sortOrder  => asc/desc
+        
+//                 Example:
+//                 /api/product/get?page=1&limit=10
+//                 /api/product/get?search=iphone
+//                 /api/product/get?category=123
+//                 /api/product/get?sortBy=price&sortOrder=desc
+        
+//                 */
+//         console.log("API HIT");
+//         const {
+//             page = "1",
+//             limit = "10",
+//             search,
+//             category,
+//             status,
+//             sortBy = "createdAt",
+//             sortOrder = "desc",
+//         } = req.query;
+
+//         const pageNumber = Number(page);
+//         const limitNumber = Number(limit);
+
+//         const skip = (pageNumber - 1) * limitNumber;
+
+//         const cachekey = `getAggregationProduct${page}:${limit}`
+//         const cached  = await connection.get(cachekey)
+
+//         if (cached) {
+//             console.log(`cache HIT`)
+//             return res.status(200).json({message:"cached Successfully",source:"redis",...JSON.parse(cached)})
+//         }
+//         console.log("cache MISS")
+//         /*
+//         =====================================
+//         Dynamic Match Object
+//         =====================================
+//         */
+
+//         const matchStage: any = {
+//             isDeleted: false,
+//         };
+
+//         /*
+//         Search Product
+//         Uses Text Index:
+//         productSchema.index({
+//             name: "text",
+//             description: "text"
+//         })
+//         */
+
+//         if (search) {
+//             matchStage.$text = {
+//                 $search: String(search),
+//             };
+//         }
+
+//         /*
+//         Filter by Category
+//         */
+
+//         if (
+//             category &&
+//             mongoose.Types.ObjectId.isValid(
+//                 String(category)
+//             )
+//         ) {
+//             matchStage.category =
+//                 new mongoose.Types.ObjectId(
+//                     String(category)
+//                 );
+//         }
+
+//         /*
+//         Filter by Status
+//         */
+
+//         if (status) {
+//             matchStage.status = status;
+//         }
+
+//         /*
+//         =====================================
+//         Sorting
+//         =====================================
+//         */
+
+//         const sortStage: any = {};
+
+//         sortStage[String(sortBy)] =
+//             sortOrder === "asc" ? 1 : -1;
+
+//         /*
+//         =====================================
+//         Aggregation Pipeline
+//         =====================================
+//         */
+
+//         // Count query
+//         const total = await Product.countDocuments(matchStage);
+
+//         // Paginated aggregation query
+//         const productList = await Product.aggregate([
+//             {
+//                 $match: matchStage,
+//             },
+//             {
+//                 $sort: sortStage as any,
+//             },
+//             {
+//                 $skip: skip,
+//             },
+//             {
+//                 $limit: limitNumber,
+//             },
+//             {
+//                 $lookup: {
+//                     from: "categories",
+//                     localField: "category",
+//                     foreignField: "_id",
+//                     as: "category",
+//                 },
+//             },
+//             {
+//                 $unwind: {
+//                     path: "$category",
+//                     preserveNullAndEmptyArrays: true,
+//                 },
+//             },
+//         ]);
+
+//         const totalPages = Math.ceil(
+//             total / limitNumber
+//         );
+
+//         /*
+//         =====================================
+//         Response
+//         =====================================
+//         */
+
+//         return res.status(200).json({
+//             success: true,
+
+//             data: productList,
+
+//             pagination: {
+//                 total,
+//                 totalPages,
+//                 currentPage: pageNumber,
+//                 limit: limitNumber,
+//                 hasNextPage:
+//                     pageNumber < totalPages,
+//                 hasPreviousPage:
+//                     pageNumber > 1,
+//             },
+//         });
+
+//     } catch (error) {
+
+//         console.log(
+//             "getAllProduct error",
+//             error
+//         );
+
+//         return res.status(500).json({
+//             success: false,
+//             message:
+//                 "Failed to fetch products",
+//             error,
+//         });
+//     }
+// };
