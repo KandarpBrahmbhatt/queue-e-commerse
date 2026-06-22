@@ -14,6 +14,7 @@ import './worker/cart.worker';
 import './worker/email.worker';
 import './worker/invoice.worker';
 import './worker/order.worker';
+import { startCronJobs } from './cron/promo.cron';
 
 const app = express()
 
@@ -23,6 +24,9 @@ const app = express()
 app.use("/api/payment/webhook", express.raw({ type: "application/json" }), stripeWebhook)
 app.use(express.json())
 app.use(cookieParser())
+
+
+startCronJobs();
 
 app.use("/api/auth",authRouter)
 app.use("/api/product",productRouter)

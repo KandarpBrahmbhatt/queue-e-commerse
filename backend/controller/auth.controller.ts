@@ -4,6 +4,8 @@ import User from '../models/user.model'
 import genToken from '../config/token'
 import { emailQueue } from '../queue/email.queue'
 import { sendOTP } from '../services/email.service'
+import roleModel from '../models/role.model'
+import { encryptData } from '../utils/AES'
 
 export const signup = async (req: Request, res: Response) => {
     try {
@@ -22,11 +24,21 @@ export const signup = async (req: Request, res: Response) => {
 
         const hashPassword = await bcrypt.hash(password, 10)
 
+        const role = await roleModel.findOne({ name: "USER" });
         const user = await User.create({
             name,
-            email,
-            password: hashPassword
-        })
+            email:encryptData(email),
+            password: hashPassword,
+            role: role?._id
+        });
+
+        // Populate the role and its nested permissions so they are available in genToken(user)
+        await user.populate({
+            path: "role",
+            populate: {
+                path: "permissions"
+            }
+        });
 
         //producer
         await emailQueue.add("welcome-email", {
@@ -96,9 +108,9 @@ export const signup = async (req: Request, res: Response) => {
             maxAge: 7 * 24 * 60 * 60 * 1000,
         })
         return res.status(200).json({ message: "signup successfully", user, AccessToken, RefreshToken })
-    } catch (error) {
+    } catch (error: any) {
         console.log("signup error", error)
-        return res.status(500).json({ messsage: "signup error", error })
+        return res.status(500).json({ messsage: "signup error", error: error.message })
     }
 }
 
@@ -112,7 +124,15 @@ export const login = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "all filed are required" })
         }
 
+        // const user = await User.findOne({ email }) 
+
         const user = await User.findOne({ email })
+            .populate({
+                path: "role",
+                populate: {
+                    path: "permissions"
+                }
+            });
 
         if (!user) {
             return res.status(400).json({ message: "user not found" })
@@ -183,7 +203,7 @@ export const sendotp = async (req: Request, res: Response) => {
         await user.save()
 
         await sendOTP(email, otp)
-        return res.status(200).json({ message: "email successfully send" ,otp})
+        return res.status(200).json({ message: "email successfully send", otp })
 
     } catch (error) {
         console.log(`sendOtp error ${error}`)
@@ -212,7 +232,7 @@ export const verifiedOtp = async (req: Request, res: Response) => {
 
         const isOtpMatch = user.resetOtp === String(otp);
 
-        const isOtpExpired =!user.otpExpires ||user.otpExpires.getTime() < Date.now();
+        const isOtpExpired = !user.otpExpires || user.otpExpires.getTime() < Date.now();
 
         if (!isOtpMatch) {
             return res.status(400).json({
@@ -247,7 +267,7 @@ export const verifiedOtp = async (req: Request, res: Response) => {
 };
 
 
-export const resetPassword = async (req:Request, res:Response) => {
+export const resetPassword = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body
 

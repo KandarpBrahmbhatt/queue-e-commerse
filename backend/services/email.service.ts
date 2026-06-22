@@ -1,6 +1,6 @@
 import { transporter } from "../config/mail";
 
-export const sendWelcomeEmail = async (email: string,name: string) => {
+export const sendWelcomeEmail = async (email: string, name: string) => {
     await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: email,
@@ -74,7 +74,7 @@ export const sendOrderConfirmationEmail = async (
 
 
 
-export const sendInvoiceEmail = async (email: string,name: string,orderNumber: string,pdfPath: string) => {
+export const sendInvoiceEmail = async (email: string, name: string, orderNumber: string, pdfPath: string) => {
 
     await transporter.sendMail({
         from: process.env.EMAIL_USER,
@@ -104,7 +104,7 @@ export const sendInvoiceEmail = async (email: string,name: string,orderNumber: s
 };
 
 
-export const sendOTP = async (to: string,otp: string) => {
+export const sendOTP = async (to: string, otp: string) => {
     await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to,
@@ -114,4 +114,28 @@ export const sendOTP = async (to: string,otp: string) => {
             <p>It expires in 5 minutes.</p>
         `,
     });
+};
+
+
+
+export const sendDiscountEmail = async (email: string, name: string) => {
+    try {
+        console.log(` Sending discount email to ${email}`);
+
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: " 50% Discount Offer!",
+            html: `
+                <h2>Hello ${name},</h2>
+                <p> You got a 50% discount offer!</p>
+                <p>Shop now before it expires.</p>
+            `
+        });
+
+        console.log(`Email sent to ${email}`);
+
+    } catch (error) {
+        console.log(" Email send error:", error);
+    }
 };

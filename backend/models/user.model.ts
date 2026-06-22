@@ -1,10 +1,11 @@
-import mongoose, { Schema, Document } from 'mongoose'
+import mongoose, { Schema, Document, mongo } from 'mongoose'
 
 import type { Request } from "express";
 export interface AuthRequest extends Request {
     user?: {
         _id?: string;
         userId?: string;
+        role: string
     };
 }
 
@@ -15,6 +16,8 @@ export interface IUser extends Document {
     resetOtp?: string;
     otpExpires?: Date;
     isOtpVerifed: boolean;
+    role: mongoose.Types.ObjectId,
+    permission: mongoose.Types.ObjectId
 }
 
 const userShema = new Schema<IUser>({
@@ -42,6 +45,15 @@ const userShema = new Schema<IUser>({
         type: Boolean,
         default: false
     },
+    role: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Role",
+        // required: true   
+    },
+    permission: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "USER",
+    }
 }, {
     timestamps: true
 })
