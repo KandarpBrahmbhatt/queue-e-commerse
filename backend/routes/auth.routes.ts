@@ -8,4 +8,5 @@ authRouter.post("/login",login)
 authRouter.post("/sendotp", sendotp)
 authRouter.post("/verifyotp", verifiedOtp)
 authRouter.post("/resetpassword", resetPassword)
+
 export default authRouter
