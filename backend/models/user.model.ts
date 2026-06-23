@@ -28,9 +28,11 @@ const userShema = new Schema<IUser>({
     },
     email: {
         type: String,
+        unique:true
     },
     password: {
-        type: String
+        type: String,
+        required:true
     },
     resetOtp: {
         type: String,
