@@ -14,6 +14,7 @@ import './worker/cart.worker';
 import './worker/email.worker';
 import './worker/invoice.worker';
 import './worker/order.worker';
+import addressRouter from './routes/address.routes';
 
 const app = express()
 
@@ -30,6 +31,7 @@ app.use("/api/cart", cartRouter);
 app.use("/api/order",orderRouter)
 app.use("/api/payment",paymentRouter)
 app.use("/api/invoice",pdfRouter)
+app.use("/api/address",addressRouter)
 const port = 5000
 app.listen(port, () => {
     console.log(`Server Running ${port}`);

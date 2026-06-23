@@ -8,6 +8,7 @@ import mongoose from 'mongoose'
 export const createOrder = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?.userId
+        const { shippingAddress, paymentMethod } = req.body // Extracted from request body (added by AI assistant)
 
         // const cart = await Cart.findOne({ userId })
         const cart = await Cart.findOne({ user: userId })
@@ -23,12 +24,28 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
 
         const orderNumber = `ORD-${Date.now()}`;
 
+        // Map incoming frontend address properties (mobile, pincode) to match the Order schema (phoneNumber, postalCode)
+        let mappedAddress = undefined
+        if (shippingAddress) {
+            mappedAddress = {
+                fullName: shippingAddress.fullName,
+                phoneNumber: shippingAddress.phoneNumber || shippingAddress.mobile,
+                addressLine1: shippingAddress.addressLine1,
+                addressLine2: shippingAddress.addressLine2,
+                city: shippingAddress.city,
+                state: shippingAddress.state,
+                postalCode: shippingAddress.postalCode || shippingAddress.pincode,
+                country: shippingAddress.country || 'India'
+            }
+        }
 
         const order = await Order.create({
             user: userId,
             items: cart.items,
             totalAmount: totalAmount,
-            orderNumber
+            orderNumber,
+            shippingAddress: mappedAddress, // Saved shipping address (added by AI assistant)
+            paymentMethod: paymentMethod || 'CARD' // Saved payment method or default (added by AI assistant)
         })
 
         cart.items = []

@@ -18,12 +18,20 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
             Explore Shop
           </button>
           {user && (
-            <button 
-              className={`nav-link-btn ${activeTab === 'orders' ? 'active' : ''}`}
-              onClick={() => onTabChange('orders')}
-            >
-              My Orders
-            </button>
+            <>
+              <button 
+                className={`nav-link-btn ${activeTab === 'orders' ? 'active' : ''}`}
+                onClick={() => onTabChange('orders')}
+              >
+                My Orders
+              </button>
+              <button 
+                className={`nav-link-btn ${activeTab === 'addresses' ? 'active' : ''}`}
+                onClick={() => onTabChange('addresses')}
+              >
+                My Addresses
+              </button>
+            </>
           )}
         </div>
 

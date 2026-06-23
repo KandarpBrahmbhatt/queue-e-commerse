@@ -5,6 +5,7 @@ import AuthView from './components/AuthView';
 import ProductCard from './components/ProductCard';
 import CartDrawer from './components/CartDrawer';
 import Notification from './components/Notification';
+import AddressManager from './components/AddressManager'; // Imported AddressManager (added by AI assistant)
 import { Search, ChevronLeft, ChevronRight, ShoppingBag, ArrowRight } from 'lucide-react';
 
 export default function App() {
@@ -157,6 +158,7 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     setCart({ items: [] });
+    setActiveTab('shop'); // Reset active tab on logout (added by AI assistant)
     showNotification('Logged out successfully', 'info');
   };
 
@@ -265,6 +267,8 @@ export default function App() {
               </>
             )}
           </>
+        ) : activeTab === 'addresses' ? ( // Added addresses tab route (added by AI assistant)
+          <AddressManager showNotification={showNotification} />
         ) : (
           <div className="orders-container">
             <h2 className="orders-title">My Order History</h2>

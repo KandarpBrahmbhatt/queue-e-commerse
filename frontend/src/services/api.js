@@ -58,14 +58,32 @@ export const api = {
     },
   },
   orders: {
-    create: () =>
+    create: (orderData = {}) => // Modified to accept orderData (added by AI assistant)
       request('/order/create', {
         method: 'POST',
+        body: JSON.stringify(orderData), // Sends shippingAddress and paymentMethod (added by AI assistant)
       }),
     getAggregation: (page = 1, limit = 10) =>
       request(`/order/getaggragationOrder?page=${page}&limit=${limit}`),
     getCurrentUser: () =>
       request('/order/getCuurentUserOrder'),
+  },
+  address: { // Added address API module (added by AI assistant)
+    get: () => request('/address/get'),
+    create: (addressData) =>
+      request('/address/create', {
+        method: 'POST',
+        body: JSON.stringify(addressData),
+      }),
+    update: (id, addressData) =>
+      request(`/address/update/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(addressData),
+      }),
+    delete: (id) =>
+      request(`/address/delete/${id}`, {
+        method: 'DELETE',
+      }),
   },
   cart: {
     get: () => request('/cart/get'),
