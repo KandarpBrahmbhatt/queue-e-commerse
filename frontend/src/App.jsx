@@ -361,6 +361,16 @@ export default function App() {
                           </div>
                         </div>
 
+                        {/* Customer signature rendering (added by AI assistant) */}
+                        {order.signature && (
+                          <div className="order-signature-display" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span className="detail-label">Authorized Signature</span>
+                            <div className="signature-preview-box" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-xs)', padding: '8px', maxWidth: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <img src={order.signature} alt="Signature" style={{ maxHeight: '60px', width: 'auto', display: 'block', filter: 'brightness(1.2)' }} />
+                            </div>
+                          </div>
+                        )}
+
                         {/* Stepped Progress Tracker */}
                         {!isCancelledOrReturned && (
                           <div className="order-progress-tracker" aria-hidden="true">

@@ -90,6 +90,8 @@ export interface IOrder extends Document {
 
     notes?: string;
 
+    signature?: string; // Base64 data URL signature drawn by the user (added by AI assistant)
+
     deliveredAt?: Date;
 
     cancelledAt?: Date;
@@ -285,6 +287,10 @@ const OrderSchema = new Schema<IOrder>(
         notes: {
             type: String,
             maxlength: 500,
+        },
+
+        signature: {
+            type: String, // Base64 string of customer drawn signature (added by AI assistant)
         },
 
         deliveredAt: {

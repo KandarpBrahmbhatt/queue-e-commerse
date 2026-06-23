@@ -8,7 +8,7 @@ import mongoose from 'mongoose'
 export const createOrder = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?.userId
-        const { shippingAddress, paymentMethod } = req.body // Extracted from request body (added by AI assistant)
+        const { shippingAddress, paymentMethod, signature } = req.body // Extracted signature from body (added by AI assistant)
 
         // const cart = await Cart.findOne({ userId })
         const cart = await Cart.findOne({ user: userId })
@@ -45,7 +45,8 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
             totalAmount: totalAmount,
             orderNumber,
             shippingAddress: mappedAddress, // Saved shipping address (added by AI assistant)
-            paymentMethod: paymentMethod || 'CARD' // Saved payment method or default (added by AI assistant)
+            paymentMethod: paymentMethod || 'CARD', // Saved payment method or default (added by AI assistant)
+            signature // Saved user drawn signature (added by AI assistant)
         })
 
         cart.items = []

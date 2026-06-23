@@ -1,15 +1,94 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2, ShoppingBag, Plus, Minus, CreditCard, MapPin, Check, PlusCircle } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Plus, Minus, CreditCard, MapPin, Check, PlusCircle, Package, Shield, Truck, Gift, Heart, Star, Upload, FileImage } from 'lucide-react';
 import { api } from '../services/api';
 
 // Modified by AI assistant:
-// 1. Added address fetching on drawer open.
-// 2. Added states for address selection and inline address creation form.
-// 3. Modified checkout flow to require and pass the selected address to order creation.
+// 1. Added signature tabs supporting drawing vs image upload.
+// 2. Added visual verification CAPTCHA step prior to order placement.
 
 export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNotification }) {
   const [checkingOut, setCheckingOut] = useState(false);
   const [updatingItemId, setUpdatingItemId] = useState(null);
+
+  // Signature selection states (added by AI assistant)
+  const [signatureMode, setSignatureMode] = useState('draw'); // 'draw' | 'upload'
+  const [uploadedSignature, setUploadedSignature] = useState('');
+
+  // Captcha verification states (added by AI assistant)
+  const [captchaVerified, setCaptchaVerified] = useState(false);
+  const [captchaChallenge, setCaptchaChallenge] = useState(null);
+  const [captchaAttempts, setCaptchaAttempts] = useState(0);
+
+  // Signature pad states and references (added by AI assistant)
+  const canvasRef = React.useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasDrawing, setHasDrawing] = useState(false);
+
+  // Mouse drawing event handlers
+  const startDrawing = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.beginPath();
+    const rect = canvas.getBoundingClientRect();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    setIsDrawing(true);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.strokeStyle = '#8b5cf6'; // electric violet line matching store primary theme
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    setHasDrawing(true);
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  // Touch drawing event handlers (for mobile devices)
+  const startDrawingTouch = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.beginPath();
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    setIsDrawing(true);
+    e.preventDefault();
+  };
+
+  const drawTouch = (e) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    ctx.strokeStyle = '#8b5cf6';
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    setHasDrawing(true);
+    e.preventDefault();
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawing(false);
+  };
 
   // Address states
   const [addresses, setAddresses] = useState([]);
@@ -47,10 +126,51 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
     }
   };
 
+  // CAPTCHA Pool (added by AI assistant)
+  const CAPTCHA_POOL = [
+    { name: 'Package', label: 'shipping package', icon: Package },
+    { name: 'Shield', label: 'security shield', icon: Shield },
+    { name: 'CreditCard', label: 'credit card', icon: CreditCard },
+    { name: 'ShoppingBag', label: 'shopping bag', icon: ShoppingBag },
+    { name: 'Truck', label: 'delivery truck', icon: Truck },
+    { name: 'Gift', label: 'gift box', icon: Gift },
+    { name: 'Heart', label: 'heart icon', icon: Heart },
+    { name: 'Star', label: 'star icon', icon: Star }
+  ];
+
+  const generateCaptchaChallenge = () => {
+    const shuffledPool = [...CAPTCHA_POOL].sort(() => 0.5 - Math.random());
+    const options = shuffledPool.slice(0, 4);
+    const target = options[Math.floor(Math.random() * options.length)];
+    setCaptchaChallenge({ target, options });
+    setCaptchaVerified(false);
+  };
+
+  const handleSignatureUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      showNotification('Please upload an image file of your signature.', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setUploadedSignature(reader.result);
+      showNotification('Signature image uploaded successfully!', 'success');
+    };
+    reader.onerror = () => {
+      showNotification('Failed to read signature image file.', 'error');
+    };
+    reader.readAsDataURL(file);
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchAddresses();
       setShowAddressForm(false);
+      generateCaptchaChallenge(); // Initialize CAPTCHA (added by AI assistant)
     }
   }, [isOpen]);
 
@@ -148,10 +268,32 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
       return;
     }
 
+    // 1. Signature validation based on active tab mode (added by AI assistant)
+    let finalSignature = '';
+    if (signatureMode === 'draw') {
+      if (!hasDrawing) {
+        showNotification('Please draw and authorize your signature.', 'error');
+        return;
+      }
+      finalSignature = canvasRef.current.toDataURL();
+    } else {
+      if (!uploadedSignature) {
+        showNotification('Please upload or select a signature image file.', 'error');
+        return;
+      }
+      finalSignature = uploadedSignature;
+    }
+
+    // 2. CAPTCHA verification validation (added by AI assistant)
+    if (!captchaVerified) {
+      showNotification('Please complete the image verification step to authorize checkout.', 'error');
+      return;
+    }
+
     setCheckingOut(true);
     try {
-      // Pass the selected address to the backend createOrder function
-      const response = await api.orders.create({ shippingAddress });
+      // Pass the selected address and signature to backend order creation (added by AI assistant)
+      const response = await api.orders.create({ shippingAddress, signature: finalSignature });
       showNotification('Order placed successfully! Redirecting to checkout...', 'success');
       onCartChange({ items: [] });
       onClose();
@@ -384,6 +526,158 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
                   </div>
                 )}
               </div>
+
+              {/* Signature Pad Section (added by AI assistant) */}
+              {selectedAddressId && !showAddressForm && (
+                <div className="checkout-signature-section">
+                  <div className="section-title-row">
+                    <h3 className="section-title">Authorize Order Signature</h3>
+                    <div className="signature-mode-tabs">
+                      <button
+                        type="button"
+                        className={`sig-tab-btn ${signatureMode === 'draw' ? 'active' : ''}`}
+                        onClick={() => setSignatureMode('draw')}
+                      >
+                        Draw
+                      </button>
+                      <button
+                        type="button"
+                        className={`sig-tab-btn ${signatureMode === 'upload' ? 'active' : ''}`}
+                        onClick={() => setSignatureMode('upload')}
+                      >
+                        Upload Image
+                      </button>
+                    </div>
+                  </div>
+
+                  {signatureMode === 'draw' ? (
+                    <>
+                      <p className="signature-instruction-text">
+                        Please sign below inside the canvas to confirm order authorization.
+                      </p>
+                      <div className="signature-canvas-wrapper glass-panel">
+                        <canvas 
+                          ref={canvasRef}
+                          width={388}
+                          height={150}
+                          className="signature-canvas"
+                          onMouseDown={startDrawing}
+                          onMouseMove={draw}
+                          onMouseUp={stopDrawing}
+                          onMouseLeave={stopDrawing}
+                          onTouchStart={startDrawingTouch}
+                          onTouchMove={drawTouch}
+                          onTouchEnd={stopDrawing}
+                        />
+                      </div>
+                      <div className="signature-actions-row">
+                        <button 
+                          type="button" 
+                          className="btn btn-outline btn-sm clear-sig-btn" 
+                          onClick={clearSignature}
+                        >
+                          Clear Drawing
+                        </button>
+                        {hasDrawing && (
+                          <span className="signature-verified-pill">
+                            <Check size={12} />
+                            <span>Signature Drawn</span>
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="signature-instruction-text">
+                        Select or drop an image file of your signature.
+                      </p>
+                      <div className="signature-upload-wrapper glass-panel">
+                        {uploadedSignature ? (
+                          <div className="uploaded-sig-preview">
+                            <img src={uploadedSignature} alt="Uploaded Signature" className="uploaded-sig-img" />
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm remove-sig-upload-btn"
+                              onClick={() => setUploadedSignature('')}
+                            >
+                              Remove Image
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="signature-upload-label">
+                            <FileImage size={32} className="upload-placeholder-icon" />
+                            <span className="upload-label-text">Click to choose image file</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleSignatureUpload}
+                              className="hidden-file-input"
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Image CAPTCHA Verification Section (added by AI assistant) */}
+              {selectedAddressId && !showAddressForm && captchaChallenge && (
+                <div className="checkout-captcha-section">
+                  <h3 className="section-title">Security Verification</h3>
+                  <p className="captcha-instruction-text">
+                    Verify you are human: Select the <strong>{captchaChallenge.target.label}</strong> from the images.
+                  </p>
+
+                  <div className="captcha-options-grid">
+                    {captchaChallenge.options.map((opt, idx) => {
+                      const IconComponent = opt.icon;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          className={`captcha-option-btn glass-panel ${captchaVerified && opt.name === captchaChallenge.target.name ? 'correct-selection' : ''}`}
+                          onClick={() => {
+                            if (opt.name === captchaChallenge.target.name) {
+                              setCaptchaVerified(true);
+                              showNotification('Image verification successfully passed!', 'success');
+                            } else {
+                              setCaptchaVerified(false);
+                              setCaptchaAttempts(prev => prev + 1);
+                              showNotification('Incorrect selection. Please try again.', 'error');
+                              generateCaptchaChallenge(); // Reshuffle challenge options
+                            }
+                          }}
+                          disabled={captchaVerified}
+                        >
+                          <IconComponent size={24} className="captcha-option-icon" />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="captcha-status-row">
+                    {captchaVerified ? (
+                      <span className="captcha-verified-pill">
+                        <Check size={12} />
+                        <span>Verified Human</span>
+                      </span>
+                    ) : (
+                      <span className="captcha-pending-text">
+                        Verification Pending...
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      className="captcha-refresh-btn"
+                      onClick={generateCaptchaChallenge}
+                      disabled={captchaVerified}
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -881,6 +1175,262 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
           margin-top: 8px;
           border-top: 1px solid var(--border-color);
           padding-top: 12px;
+        }
+
+        /* Signature Pad Styles (added by AI assistant) */
+        .checkout-signature-section {
+          border-top: 1px solid var(--border-color);
+          padding-top: 20px;
+          text-align: left;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .signature-instruction-text {
+          font-size: 0.8rem;
+          color: var(--text-muted);
+          line-height: 1.4;
+        }
+
+        .signature-canvas-wrapper {
+          background: rgba(0, 0, 0, 0.4);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-sm);
+          overflow: hidden;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 154px;
+        }
+
+        .signature-canvas {
+          background: transparent;
+          cursor: crosshair;
+          display: block;
+          touch-action: none; /* Prevents scrolling when drawing on touch screens */
+        }
+
+        .signature-actions-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: 4px;
+        }
+
+        .clear-sig-btn {
+          padding: 6px 12px;
+          font-size: 0.8rem;
+        }
+
+        .signature-verified-pill {
+          background: rgba(16, 185, 129, 0.15);
+          color: #34d399;
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          font-size: 0.7rem;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: var(--radius-full);
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+          }
+          70% {
+            box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+          }
+        }
+
+        /* Signature Mode Tabs & Upload Styles (added by AI assistant) */
+        .signature-mode-tabs {
+          display: flex;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-xs);
+          padding: 2px;
+          gap: 2px;
+        }
+
+        .sig-tab-btn {
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          font-size: 0.75rem;
+          font-weight: 600;
+          padding: 4px 10px;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .sig-tab-btn:hover {
+          color: var(--text-main);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .sig-tab-btn.active {
+          color: #fff;
+          background: var(--primary);
+          box-shadow: 0 2px 8px var(--primary-glow);
+        }
+
+        .signature-upload-wrapper {
+          background: rgba(0, 0, 0, 0.4);
+          border: 1px dashed var(--border-color);
+          border-radius: var(--radius-sm);
+          height: 154px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          overflow: hidden;
+          transition: border-color 0.2s;
+        }
+
+        .signature-upload-wrapper:hover {
+          border-color: rgba(139, 92, 246, 0.4);
+        }
+
+        .signature-upload-label {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          color: var(--text-muted);
+          cursor: pointer;
+          width: 100%;
+          height: 100%;
+          justify-content: center;
+        }
+
+        .upload-placeholder-icon {
+          color: var(--text-muted);
+          opacity: 0.6;
+        }
+
+        .upload-label-text {
+          font-size: 0.85rem;
+          font-weight: 500;
+        }
+
+        .hidden-file-input {
+          display: none;
+        }
+
+        .uploaded-sig-preview {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .uploaded-sig-img {
+          max-height: 80px;
+          width: auto;
+          display: block;
+          filter: brightness(1.2);
+        }
+
+        .remove-sig-upload-btn {
+          padding: 4px 10px;
+          font-size: 0.75rem;
+        }
+
+        /* CAPTCHA Verification Styles (added by AI assistant) */
+        .checkout-captcha-section {
+          border-top: 1px solid var(--border-color);
+          padding-top: 20px;
+          text-align: left;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .captcha-options-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+          margin: 6px 0;
+        }
+
+        .captcha-option-btn {
+          height: 60px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          color: var(--text-muted);
+          transition: all 0.25s ease;
+        }
+
+        .captcha-option-btn:hover:not(:disabled) {
+          border-color: rgba(139, 92, 246, 0.3);
+          background: var(--bg-surface-hover);
+          color: var(--text-main);
+          transform: translateY(-1px);
+        }
+
+        .captcha-option-btn.correct-selection {
+          border-color: var(--secondary);
+          background: rgba(16, 185, 129, 0.05);
+          color: var(--secondary);
+          box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+        }
+
+        .captcha-option-btn:disabled:not(.correct-selection) {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .captcha-option-icon {
+          transition: transform 0.2s;
+        }
+
+        .captcha-option-btn:hover .captcha-option-icon {
+          transform: scale(1.1);
+        }
+
+        .captcha-status-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 0.8rem;
+          margin-top: 2px;
+        }
+
+        .captcha-pending-text {
+          color: var(--text-muted);
+          font-weight: 500;
+        }
+
+        .captcha-refresh-btn {
+          background: transparent;
+          border: none;
+          color: #a78bfa;
+          font-weight: 600;
+          cursor: pointer;
+          font-size: 0.8rem;
+          transition: color 0.2s;
+        }
+
+        .captcha-refresh-btn:hover:not(:disabled) {
+          color: #c084fc;
+        }
+
+        .captcha-refresh-btn:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
         }
       `}</style>
     </div>

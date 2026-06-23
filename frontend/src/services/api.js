@@ -1,10 +1,50 @@
 const API_BASE = '/api';
 
+// Cryptographic HMAC-SHA256 signature generator using the browser's native Web Crypto API (added by AI assistant)
+async function generateHMAC(message, secret) {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(message);
+
+  const cryptoKey = await window.crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signatureBuffer = await window.crypto.subtle.sign(
+    'HMAC',
+    cryptoKey,
+    messageData
+  );
+
+  // Convert ArrayBuffer to hex string
+  const hashArray = Array.from(new Uint8Array(signatureBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Matches the backend signature secret (added by AI assistant)
+const SIGNATURE_SECRET = 'dsfsdfsdsdfsdfsdfsdjfjklsfdjlsdfkjkldsjf';
+
 async function request(url, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
+
+  // Automatically compute and inject x-signature header for write requests (added by AI assistant)
+  if (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE' || options.body) {
+    let bodyStr = '';
+    if (options.body) {
+      bodyStr = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
+    } else if (options.method === 'POST') {
+      bodyStr = '{}';
+    }
+    const signature = await generateHMAC(bodyStr, SIGNATURE_SECRET);
+    headers['x-signature'] = signature;
+  }
 
   const response = await fetch(`${API_BASE}${url}`, {
     ...options,

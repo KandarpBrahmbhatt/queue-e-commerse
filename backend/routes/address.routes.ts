@@ -1,14 +1,15 @@
 import express from 'express'
 import { isAuth } from '../middaleware/auth.middleware'
-import { createAddress, getAddress, updateAddress, deleteAddress } from '../controller/address.controller'
+import { createAddress, deleteAddress, getAddress, updateAddress } from '../controller/address.controller'
+import { createAddressValidator, updateAddressValidator } from '../validator/address.validator'
 
-// Changes implemented by AI assistant:
-// Added get, update, and delete endpoints, all protected with isAuth middleware.
 const addressRouter = express.Router()
 
-addressRouter.post("/create", isAuth, createAddress)
-addressRouter.get("/get", isAuth, getAddress)
-addressRouter.put("/update/:id", isAuth, updateAddress)
-addressRouter.delete("/delete/:id", isAuth, deleteAddress)
+addressRouter.post("/create",isAuth,createAddressValidator,createAddress)
+addressRouter.get("/get",isAuth,getAddress)
+
+addressRouter.put("/:id/update",isAuth,updateAddressValidator,updateAddress)
+
+addressRouter.delete("/:id/delete",isAuth,deleteAddress)
 
 export default addressRouter
