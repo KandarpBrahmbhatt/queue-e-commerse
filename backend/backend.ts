@@ -15,8 +15,13 @@ import './worker/email.worker';
 import './worker/invoice.worker';
 import './worker/order.worker';
 import addressRouter from './routes/address.routes';
+import { initSocket } from './socket/socket';
+import http from 'http'
 
 const app = express()
+
+const server = http.createServer(app)
+initSocket(server)
 
 // Stripe webhooks require the raw request body (Buffer) to verify the cryptographic signature.
 // Using express.raw() middleware specifically for this route preserves the raw body.
@@ -33,9 +38,13 @@ app.use("/api/payment",paymentRouter)
 app.use("/api/invoice",pdfRouter)
 app.use("/api/address",addressRouter)
 const port = 5000
-app.listen(port, () => {
-    console.log(`Server Running ${port}`);
-    connectdb()
+// app.listen(port, () => {
+//     console.log(`Server Running ${port}`);
+//     connectdb()
+// });
+
+server.listen(port, () => {
+  console.log(`Server Running ${port}`);
 });
 
 // merge the code dev and main 

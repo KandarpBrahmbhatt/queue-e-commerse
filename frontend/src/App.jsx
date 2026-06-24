@@ -7,12 +7,50 @@ import CartDrawer from './components/CartDrawer';
 import Notification from './components/Notification';
 import AddressManager from './components/AddressManager'; // Imported AddressManager (added by AI assistant)
 import { Search, ChevronLeft, ChevronRight, ShoppingBag, ArrowRight } from 'lucide-react';
+import { io } from 'socket.io-client';
+import ChatbotWidget from './components/ChatbotWidget';
 
 export default function App() {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('user');
     return saved ? JSON.parse(saved) : null;
   });
+
+  const [socket, setSocket] = useState(null);
+
+  // Initialize Socket.IO connection when user is logged in
+  useEffect(() => {
+    if (!user) {
+      if (socket) {
+        socket.disconnect();
+        setSocket(null);
+      }
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    // Connect to the backend Socket.IO server on port 5000
+    const newSocket = io('http://localhost:5000', {
+      auth: { token },
+      transports: ['websocket', 'polling']
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Socket.IO connection established with backend.');
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error('Socket.IO connection error:', err.message);
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [user]);
 
   const [cart, setCart] = useState({ items: [] });
   const [products, setProducts] = useState([]);
@@ -159,6 +197,7 @@ export default function App() {
     setUser(null);
     setCart({ items: [] });
     setActiveTab('shop'); // Reset active tab on logout (added by AI assistant)
+    localStorage.removeItem('token'); // Clear the socket JWT token from storage
     showNotification('Logged out successfully', 'info');
   };
 
@@ -464,6 +503,13 @@ export default function App() {
           onClose={() => setNotification(null)}
         />
       )}
+
+      {/* Floating E-Commerce Chatbot Widget */}
+      <ChatbotWidget 
+        user={user} 
+        socket={socket} 
+        onAuthClick={() => setIsAuthOpen(true)} 
+      />
 
       <style>{`
         /* Hero Banner */

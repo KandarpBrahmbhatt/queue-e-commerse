@@ -23,6 +23,10 @@ export default function AuthView({ onClose, onSuccess, showNotification }) {
       try {
         const response = await api.auth.login(email, password);
         showNotification(response.message || 'Logged in successfully!', 'success');
+        // Store the JWT access token in localStorage for Socket.IO authentication
+        if (response.AccessToken) {
+          localStorage.setItem('token', response.AccessToken);
+        }
         onSuccess(response.user);
         onClose();
       } catch (err) {
@@ -39,6 +43,10 @@ export default function AuthView({ onClose, onSuccess, showNotification }) {
       try {
         const response = await api.auth.signup(name, email, password);
         showNotification(response.message || 'Account created successfully!', 'success');
+        // Store the JWT access token in localStorage for Socket.IO authentication
+        if (response.AccessToken) {
+          localStorage.setItem('token', response.AccessToken);
+        }
         onSuccess(response.user);
         onClose();
       } catch (err) {
