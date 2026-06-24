@@ -104,4 +104,11 @@ export const api = {
         body: JSON.stringify({ orderId }),
       }),
   },
+  ai: {
+    chat: (message) =>
+      request('/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+      }),
+  },
 };

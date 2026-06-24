@@ -4,6 +4,7 @@ import { Cart } from '../models/card.model'
 import User, { AuthRequest } from '../models/user.model'
 import { orderEmailQueue } from '../queue/order.queue'
 import mongoose from 'mongoose'
+import { getIO } from '../socket/socket'
 
 export const createOrder = async (req: AuthRequest, res: Response) => {
     try {
@@ -47,7 +48,13 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
             shippingAddress: mappedAddress, // Saved shipping address (added by AI assistant)
             paymentMethod: paymentMethod || 'CARD' // Saved payment method or default (added by AI assistant)
         })
+        const io = getIO();
 
+        io.emit("newOrder", {
+            message:"create order sucessfully",
+            orderId: order._id,
+            totalAmount: order.totalAmount
+        });
         cart.items = []
         await cart.save()
 

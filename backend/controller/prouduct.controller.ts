@@ -3,6 +3,7 @@ import Product from '../models/product.model'
 import mongoose from 'mongoose'
 import connection from '../config/redis'
 import uploadOnCloudinary from '../config/cloudinary'
+import { getIO } from '../socket/socket'
 
 
 export const createProudct = async (req: Request, res: Response) => {
@@ -19,7 +20,7 @@ export const createProudct = async (req: Request, res: Response) => {
         if (product) {
             return res.status(400).json({ message: "productalready exist" })
         }
-//  image upload on cloudinary 
+        //  image upload on cloudinary 
         let imageUrl = "";
         const fileReq = req as any; // typescript ma type assign karvo pade aetale lakhiyu 6e.
 
@@ -28,10 +29,20 @@ export const createProudct = async (req: Request, res: Response) => {
             imageUrl = result?.secure_url || "";
         }
 
+        
+
         const newProduct = await Product.create({
             name, slug, description, sku, price, stock, category,   images: imageUrl ? [imageUrl] : [],
         })
 
+
+        const io = getIO();
+
+        io.emit("notification", {
+            type:"PRODUCT_CREATED",
+            message: `${newProduct.name} added successfully`,
+            productId: newProduct._id
+        });
         return res.status(200).json({ message: "product created sucessfully", newProduct })
     } catch (error) {
         console.log("createProduct error", error)

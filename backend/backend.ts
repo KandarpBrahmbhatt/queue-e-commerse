@@ -18,6 +18,7 @@ import addressRouter from './routes/address.routes';
 import { initSocket } from './socket/socket';
 import http from 'http'
 import dotenv from "dotenv";
+import aiRoutes from './routes/ai.routes';
 dotenv.config();
 const app = express()
 
@@ -38,6 +39,7 @@ app.use("/api/order",orderRouter)
 app.use("/api/payment",paymentRouter)
 app.use("/api/invoice",pdfRouter)
 app.use("/api/address",addressRouter)
+app.use("/api/ai", aiRoutes);
 const port = 5000
 // app.listen(port, () => {
 //     console.log(`Server Running ${port}`);

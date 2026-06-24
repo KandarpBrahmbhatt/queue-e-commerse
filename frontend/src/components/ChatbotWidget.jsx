@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Send, X, Bot, User, Sparkles, AlertCircle, Trash2 } from 'lucide-react';
+import { api } from '../services/api';
 
 /**
  * ChatbotWidget renders a floating chatbot interface in the bottom-right corner.
@@ -7,7 +8,7 @@ import { MessageSquare, Send, X, Bot, User, Sparkles, AlertCircle, Trash2 } from
  *
  * @param {Object} props
  * @param {Object|null} props.user Current logged-in user profile.
- * @param {Object|null} props.socket Socket.IO client instance.
+ * @param {Object|null} props.socket Socket.IO client instance (unused since chatbot uses HTTP, but kept for signature compatibility).
  * @param {Function} props.onAuthClick Callback triggered if a user needs to log in to chat.
  */
 export default function ChatbotWidget({ user, socket, onAuthClick }) {
@@ -25,7 +26,6 @@ export default function ChatbotWidget({ user, socket, onAuthClick }) {
     ];
   });
   const [isTyping, setIsTyping] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -34,92 +34,55 @@ export default function ChatbotWidget({ user, socket, onAuthClick }) {
     localStorage.setItem('chatbot_history', JSON.stringify(messages));
   }, [messages]);
 
-  // Track socket connection state
-  useEffect(() => {
-    if (!socket) {
-      setIsConnected(false);
-      return;
-    }
-
-    setIsConnected(socket.connected);
-
-    const onConnect = () => setIsConnected(true);
-    const onDisconnect = () => setIsConnected(false);
-
-    socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
-
-    return () => {
-      socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
-    };
-  }, [socket]);
-
-  // Register real-time message and typing status listeners from backend
-  useEffect(() => {
-    if (!socket) return;
-
-    // Handle receiving responses from the AI chatbot
-    const handleReceiveMessage = (data) => {
-      if (data.senderId === 'ai-chatbot') {
-        setMessages((prev) => [
-          ...prev,
-          {
-            senderId: data.senderId,
-            message: data.message,
-            isAi: data.isAi,
-            createdAt: data.createdAt || new Date().toISOString()
-          }
-        ]);
-      }
-    };
-
-    // Handle typing indicator updates from backend chatbot
-    const handleTyping = (data) => {
-      if (data.senderId === 'ai-chatbot') {
-        setIsTyping(data.isTyping);
-      }
-    };
-
-    socket.on('receive-message', handleReceiveMessage);
-    socket.on('typing', handleTyping);
-
-    return () => {
-      socket.off('receive-message', handleReceiveMessage);
-      socket.off('typing', handleTyping);
-    };
-  }, [socket]);
-
   // Auto-scroll to the bottom of the conversation on message update or typing state change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
   /**
-   * Sends the user's message to the Socket.IO backend.
+   * Sends the user's message to the backend HTTP AI service.
    * 
-   * @param {string} text Text content of the message.
+   * @param {string} textToSend Text content of the message.
    */
-  const handleSendMessage = (textToSend) => {
+  const handleSendMessage = async (textToSend) => {
     const trimmed = textToSend.trim();
-    if (!trimmed || !socket || !user) return;
+    if (!trimmed) return;
 
     // 1. Add user's message locally
     const newUserMessage = {
-      senderId: user.id || user._id,
+      senderId: user ? (user.id || user._id) : 'guest',
       message: trimmed,
       createdAt: new Date().toISOString()
     };
 
     setMessages((prev) => [...prev, newUserMessage]);
-
-    // 2. Emit the message event to the backend socket
-    socket.emit('send-message', {
-      receiverId: 'ai-chatbot',
-      message: trimmed
-    });
-
     setMessageText('');
+    setIsTyping(true);
+
+    try {
+      // 2. Call the backend HTTP AI service
+      const response = await api.ai.chat(trimmed);
+      
+      // 3. Add bot's response locally
+      const botResponse = {
+        senderId: 'ai-chatbot',
+        message: response.reply || 'Sorry, I did not understand that.',
+        isAi: true,
+        createdAt: new Date().toISOString()
+      };
+      setMessages((prev) => [...prev, botResponse]);
+    } catch (error) {
+      console.error('AI chat error:', error);
+      const errorResponse = {
+        senderId: 'ai-chatbot',
+        message: 'Sorry, I am having trouble connecting to my brain right now.',
+        isAi: false,
+        createdAt: new Date().toISOString()
+      };
+      setMessages((prev) => [...prev, errorResponse]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   /**
@@ -155,8 +118,7 @@ export default function ChatbotWidget({ user, socket, onAuthClick }) {
         aria-label="Open Chatbot Support"
       >
         {isOpen ? <X size={22} /> : <MessageSquare size={22} />}
-        {!isOpen && !user && <span className="launcher-badge">Guest</span>}
-        {!isOpen && user && isConnected && <span className="online-dot-pulse"></span>}
+        {!isOpen && <span className="online-dot-pulse"></span>}
       </button>
 
       {/* Chat Drawer/Overlay Window */}
@@ -171,19 +133,9 @@ export default function ChatbotWidget({ user, socket, onAuthClick }) {
               <div>
                 <h4>Store Assistant</h4>
                 <div className="connection-status">
-                  {user ? (
-                    isConnected ? (
-                      <span className="status-label connected">
-                        <span className="status-dot green"></span> Live Chat
-                      </span>
-                    ) : (
-                      <span className="status-label disconnected">
-                        <span className="status-dot red"></span> Connecting...
-                      </span>
-                    )
-                  ) : (
-                    <span className="status-label guest">Offline Mode</span>
-                  )}
+                  <span className="status-label connected">
+                    <span className="status-dot green"></span> AI Support Live
+                  </span>
                 </div>
               </div>
             </div>
@@ -202,116 +154,95 @@ export default function ChatbotWidget({ user, socket, onAuthClick }) {
 
           {/* Conversation Area */}
           <div className="chatbot-body">
-            {!user ? (
-              // Prompt for unauthenticated guests
-              <div className="chatbot-auth-fallback">
-                <AlertCircle size={40} className="fallback-icon" />
-                <h3>Sign In Required</h3>
-                <p>You must be logged in to connect to our real-time AI Chatbot for order and product lookups.</p>
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => {
-                    setIsOpen(false);
-                    onAuthClick();
-                  }}
-                >
-                  Log In Now
-                </button>
-              </div>
-            ) : (
-              // Chat conversation timeline
-              <div className="chatbot-messages-list">
-                {messages.map((msg, idx) => {
-                  const isBot = msg.senderId === 'ai-chatbot';
-                  return (
-                    <div key={idx} className={`chat-message-bubble-wrapper ${isBot ? 'incoming' : 'outgoing'}`}>
-                      <div className="message-avatar">
-                        {isBot ? <Bot size={14} /> : <User size={14} />}
-                      </div>
-                      
-                      <div className="message-bubble-content">
-                        <div className="message-bubble">
-                          <p className="message-text">
-                            {msg.message}
-                          </p>
-                          {isBot && msg.isAi && (
-                            <span className="ai-badge">
-                              <Sparkles size={8} /> AI
-                            </span>
-                          )}
-                        </div>
-                        <span className="message-time">
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Typing indicator bubble */}
-                {isTyping && (
-                  <div className="chat-message-bubble-wrapper incoming typing">
+            {/* Chat conversation timeline */}
+            <div className="chatbot-messages-list">
+              {messages.map((msg, idx) => {
+                const isBot = msg.senderId === 'ai-chatbot';
+                return (
+                  <div key={idx} className={`chat-message-bubble-wrapper ${isBot ? 'incoming' : 'outgoing'}`}>
                     <div className="message-avatar">
-                      <Bot size={14} />
+                      {isBot ? <Bot size={14} /> : <User size={14} />}
                     </div>
+                    
                     <div className="message-bubble-content">
-                      <div className="message-bubble typing-bubble">
-                        <div className="typing-dot"></div>
-                        <div className="typing-dot"></div>
-                        <div className="typing-dot"></div>
+                      <div className="message-bubble">
+                        <p className="message-text">
+                          {msg.message}
+                        </p>
+                        {isBot && msg.isAi && (
+                          <span className="ai-badge">
+                            <Sparkles size={8} /> AI
+                          </span>
+                        )}
                       </div>
+                      <span className="message-time">
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
                   </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
+                );
+              })}
+
+              {/* Typing indicator bubble */}
+              {isTyping && (
+                <div className="chat-message-bubble-wrapper incoming typing">
+                  <div className="message-avatar">
+                    <Bot size={14} />
+                  </div>
+                  <div className="message-bubble-content">
+                    <div className="message-bubble typing-bubble">
+                      <div className="typing-dot"></div>
+                      <div className="typing-dot"></div>
+                      <div className="typing-dot"></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
           </div>
 
           {/* Input Area / Suggestions */}
-          {user && (
-            <div className="chatbot-footer">
-              {/* Suggestion Chips */}
-              {messages.length < 5 && (
-                <div className="suggestion-chips-container">
-                  {suggestions.map((chip, idx) => (
-                    <button 
-                      key={idx}
-                      className="suggestion-chip"
-                      onClick={() => handleSendMessage(chip.query)}
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+          <div className="chatbot-footer">
+            {/* Suggestion Chips */}
+            {messages.length < 5 && (
+              <div className="suggestion-chips-container">
+                {suggestions.map((chip, idx) => (
+                  <button 
+                    key={idx}
+                    className="suggestion-chip"
+                    onClick={() => handleSendMessage(chip.query)}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
-              {/* Chat Input Form */}
-              <form 
-                className="chatbot-input-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendMessage(messageText);
-                }}
+            {/* Chat Input Form */}
+            <form 
+              className="chatbot-input-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage(messageText);
+              }}
+            >
+              <input 
+                type="text"
+                placeholder="Type a store question..."
+                className="chatbot-input-field"
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+              />
+              <button 
+                type="submit" 
+                className="chatbot-send-btn"
+                disabled={!messageText.trim()}
               >
-                <input 
-                  type="text"
-                  placeholder={isConnected ? "Type a store question..." : "Connecting to server..."}
-                  className="chatbot-input-field"
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  disabled={!isConnected}
-                />
-                <button 
-                  type="submit" 
-                  className="chatbot-send-btn"
-                  disabled={!isConnected || !messageText.trim()}
-                >
-                  <Send size={16} />
-                </button>
-              </form>
-            </div>
-          )}
+                <Send size={16} />
+              </button>
+            </form>
+          </div>
         </div>
       )}
 

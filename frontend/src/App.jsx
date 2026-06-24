@@ -65,6 +65,21 @@ export default function App() {
   const [notification, setNotification] = useState(null);
   const [productsLoading, setProductsLoading] = useState(false);
 
+  // Persistent rich notifications state
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem('notifications');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error('Failed to parse notifications from localStorage:', e);
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
   // Orders State
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -85,6 +100,21 @@ export default function App() {
   // Toast helper
   const showNotification = useCallback((message, type = 'success') => {
     setNotification({ message, type });
+  }, []);
+
+  // Notification center actions
+  const handleMarkAsRead = useCallback((id) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  }, []);
+
+  const handleMarkAllAsRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
+  const handleClearAllNotifications = useCallback(() => {
+    setNotifications([]);
   }, []);
 
   // Fetch Products via Aggregation API
@@ -148,6 +178,59 @@ export default function App() {
       fetchOrders();
     }
   }, [activeTab, fetchOrders, ordersPage]);
+
+  // Listen for socket notifications (e.g. product created, order created)
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (data) => {
+      console.log('Socket notification received:', data);
+      if (data) {
+        if (data.type === 'PRODUCT_CREATED') {
+          showNotification(data.message || 'New product created successfully!', 'success');
+          fetchProducts(); // Refresh products list
+        }
+        
+        // Append rich notification object to log
+        const newNotif = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+          type: data.type || 'PRODUCT_CREATED',
+          message: data.message || 'Action completed successfully.',
+          productId: data.productId,
+          timestamp: new Date().toISOString(),
+          read: false
+        };
+        setNotifications((prev) => [newNotif, ...prev].slice(0, 50));
+      }
+    };
+
+    const handleNewOrder = (data) => {
+      console.log('Socket newOrder received:', data);
+      if (data) {
+        showNotification(data.message || 'Order placed successfully!', 'success');
+        fetchOrders(); // Refresh orders list if needed
+        
+        // Append rich notification object to log
+        const newNotif = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+          type: 'ORDER_STATUS_UPDATE',
+          message: `${data.message || 'New order placed'}: Amount ₹${data.totalAmount?.toLocaleString()}`,
+          orderId: data.orderId,
+          timestamp: new Date().toISOString(),
+          read: false
+        };
+        setNotifications((prev) => [newNotif, ...prev].slice(0, 50));
+      }
+    };
+
+    socket.on('notification', handleNotification);
+    socket.on('newOrder', handleNewOrder);
+
+    return () => {
+      socket.off('notification', handleNotification);
+      socket.off('newOrder', handleNewOrder);
+    };
+  }, [socket, showNotification, fetchProducts, fetchOrders]);
 
   // Debounce Search
   useEffect(() => {
@@ -214,6 +297,10 @@ export default function App() {
         onLogout={handleLogout}
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        notifications={notifications}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
+        onClearAll={handleClearAllNotifications}
       />
 
       {/* Main Dashboard / Shop Area / Orders Area */}
