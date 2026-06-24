@@ -23,8 +23,11 @@ export interface IProduct extends Document {
     stock: number;
     sold: number;
 
-    category: mongoose.Types.ObjectId;
+    // category: mongoose.Types.ObjectId;
+    category: string
+
     images: string[];
+
 
     status: ProductStatus;
 
@@ -102,9 +105,10 @@ const productSchema = new Schema<IProduct>(
         },
 
         category: {
-            type: Schema.Types.ObjectId,
-            ref: "Category",
-            required: true,
+            type: String
+            // type: Schema.Types.ObjectId,
+            // ref: "Category",
+            // required: true,
         },
 
         images: {
@@ -140,18 +144,18 @@ const productSchema = new Schema<IProduct>(
     }
 );
 
-productSchema.index({name:"text",description:"text"})
+productSchema.index({ name: "text", description: "text" })
 
-productSchema.index({slug:1})
+productSchema.index({ slug: 1 })
 
-productSchema.index({sku:1})
+productSchema.index({ sku: 1 })
 
-productSchema.index({category:1})
+productSchema.index({ category: 1 })
 
-productSchema.index({status:1})
+productSchema.index({ status: 1 })
 
-productSchema.index({isDeleted:1})
+productSchema.index({ isDeleted: 1 })
 
-const Product = mongoose.model<IProduct>("Product",productSchema)
+const Product = mongoose.model<IProduct>("Product", productSchema)
 
 export default Product

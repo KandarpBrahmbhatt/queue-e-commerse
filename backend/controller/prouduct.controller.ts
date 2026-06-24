@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import Product from '../models/product.model'
 import mongoose from 'mongoose'
 import connection from '../config/redis'
+import uploadOnCloudinary from '../config/cloudinary'
 
 
 export const createProudct = async (req: Request, res: Response) => {
@@ -18,9 +19,17 @@ export const createProudct = async (req: Request, res: Response) => {
         if (product) {
             return res.status(400).json({ message: "productalready exist" })
         }
+//  image upload on cloudinary 
+        let imageUrl = "";
+        const fileReq = req as any; // typescript ma type assign karvo pade aetale lakhiyu 6e.
+
+        if (fileReq.file) {
+            const result = await uploadOnCloudinary(fileReq.file.path);
+            imageUrl = result?.secure_url || "";
+        }
 
         const newProduct = await Product.create({
-            name, slug, description, sku, price, stock, category, images
+            name, slug, description, sku, price, stock, category,   images: imageUrl ? [imageUrl] : [],
         })
 
         return res.status(200).json({ message: "product created sucessfully", newProduct })
