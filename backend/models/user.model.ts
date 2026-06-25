@@ -5,6 +5,8 @@ export interface AuthRequest extends Request {
     user?: {
         _id?: string;
         userId?: string;
+        role?: string;
+        permissions?: string[];
     };
 }
 
@@ -15,6 +17,7 @@ export interface IUser extends Document {
     resetOtp?: string;
     otpExpires?: Date;
     isOtpVerifed: boolean;
+    role: mongoose.Types.ObjectId
 }
 
 const userShema = new Schema<IUser>({
@@ -42,6 +45,11 @@ const userShema = new Schema<IUser>({
         type: Boolean,
         default: false
     },
+    role: {
+        type: Schema.Types.ObjectId,
+        ref: "Role",
+        required:true
+    }
 }, {
     timestamps: true
 })

@@ -199,14 +199,13 @@ const OrderSchema = new Schema<IOrder>(
             type: Schema.Types.ObjectId,
             ref: "User",
             
-            index: true,
+            // index: true,
         },
 
         orderNumber: {
             type: String,
             
-            unique: true,
-            index: true,
+            // unique: true,
         },
 
         items: {
@@ -249,7 +248,7 @@ const OrderSchema = new Schema<IOrder>(
             type: String,
             enum: Object.values(OrderStatus),
             default: OrderStatus.PENDING,
-            index: true,
+            // index: true,
         },
 
         subtotal: {

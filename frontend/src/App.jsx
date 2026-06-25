@@ -6,9 +6,10 @@ import ProductCard from './components/ProductCard';
 import CartDrawer from './components/CartDrawer';
 import Notification from './components/Notification';
 import AddressManager from './components/AddressManager'; // Imported AddressManager (added by AI assistant)
-import { Search, ChevronLeft, ChevronRight, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ShoppingBag, ArrowRight, Star } from 'lucide-react';
 import { io } from 'socket.io-client';
 import ChatbotWidget from './components/ChatbotWidget';
+import ReviewModal from './components/ReviewModal';
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -71,6 +72,26 @@ export default function App() {
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersTotalPages, setOrdersTotalPages] = useState(1);
   const [payingOrderId, setPayingOrderId] = useState(null);
+
+  // Review Modal State
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [reviewMode, setReviewMode] = useState('view');
+  const [reviewProductId, setReviewProductId] = useState(null);
+  const [reviewProductName, setReviewProductName] = useState('');
+
+  const handleWriteReview = (productId, productName) => {
+    setReviewProductId(productId);
+    setReviewProductName(productName);
+    setReviewMode('write');
+    setIsReviewOpen(true);
+  };
+
+  const handleViewReviews = (productId, productName) => {
+    setReviewProductId(productId);
+    setReviewProductName(productName);
+    setReviewMode('view');
+    setIsReviewOpen(true);
+  };
 
   // Sync user profile to localStorage
   useEffect(() => {
@@ -275,6 +296,7 @@ export default function App() {
                       product={product} 
                       onAddToCart={handleAddToCart}
                       user={user}
+                      onViewReviews={handleViewReviews}
                     />
                   ))}
                 </div>
@@ -430,6 +452,42 @@ export default function App() {
                           </div>
                         )}
 
+                        {/* Order Items List */}
+                        {order.items && order.items.length > 0 && (
+                          <div className="order-items-list" style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px', letterSpacing: '0.5px' }}>Items in this Order</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              {order.items.map((item, idx) => (
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', background: 'rgba(255,255,255,0.02)', padding: '10px 14px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                                    <img 
+                                      src={item.image || 'https://picsum.photos/seed/' + (item.product || idx) + '/50/50'} 
+                                      alt={item.name} 
+                                      style={{ width: '42px', height: '42px', objectFit: 'contain', borderRadius: '4px', background: 'rgba(0,0,0,0.1)' }}
+                                    />
+                                    <div style={{ textAlign: 'left', minWidth: 0 }}>
+                                      <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Qty: {item.quantity} × ₹{item.price.toLocaleString()}</span>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Review Button for Delivered Orders */}
+                                  {status === 'DELIVERD' && (
+                                    <button 
+                                      className="btn btn-outline btn-sm" 
+                                      style={{ padding: '6px 12px', fontSize: '0.75rem', textTransform: 'none', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'rgba(167, 139, 250, 0.4)', color: '#a78bfa' }}
+                                      onClick={() => handleWriteReview(item.product, item.name)}
+                                    >
+                                      <Star size={12} fill="#a78bfa" />
+                                      <span>Write Review</span>
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Pay Now Action button */}
                         {isPendingPayment && (
                           <div className="pay-now-container">
@@ -509,6 +567,16 @@ export default function App() {
         user={user} 
         socket={socket} 
         onAuthClick={() => setIsAuthOpen(true)} 
+      />
+
+      {/* Review Modal */}
+      <ReviewModal 
+        isOpen={isReviewOpen}
+        onClose={() => setIsReviewOpen(false)}
+        mode={reviewMode}
+        productId={reviewProductId}
+        productName={reviewProductName}
+        showNotification={showNotification}
       />
 
       <style>{`

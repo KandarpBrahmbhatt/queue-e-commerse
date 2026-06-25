@@ -38,6 +38,8 @@ export interface IProduct extends Document {
 
     createdAt: Date;
     updatedAt: Date;
+    ratingsAverage:number,
+    ratingsQuantity:number
 }
 
 const productSchema = new Schema<IProduct>(
@@ -52,7 +54,7 @@ const productSchema = new Schema<IProduct>(
         slug: {
             type: String,
             required: true,
-            unique: true,
+            // unique: true,
             lowercase: true,
             trim: true,
         },
@@ -70,7 +72,7 @@ const productSchema = new Schema<IProduct>(
         sku: {
             type: String,
             required: true,
-            unique: true,
+            // unique: true,
             uppercase: true,
             trim: true,
         },
@@ -137,6 +139,15 @@ const productSchema = new Schema<IProduct>(
         isDeleted: {
             type: Boolean,
             default: false,
+        },
+        ratingsAverage: {
+            type: Number,
+            default: 0,
+        },
+
+        ratingsQuantity: {
+            type: Number,
+            default: 0,
         },
     },
     {

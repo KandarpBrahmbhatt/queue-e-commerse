@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import User from '../models/user.model'
+import Role from '../models/role.model'
 import genToken from '../config/token'
 import { emailQueue } from '../queue/email.queue'
 import { sendOTP } from '../services/email.service'
@@ -22,11 +23,26 @@ export const signup = async (req: Request, res: Response) => {
 
         const hashPassword = await bcrypt.hash(password, 10)
 
+        const customerRole = await Role.findOne({
+            name: "CUSTOMER"
+        }).populate("permissions");
+
         const user = await User.create({
             name,
             email,
-            password: hashPassword
-        })
+            password: hashPassword,
+            role: customerRole?._id
+        });
+
+        // Populate user role and permissions for token generation
+        if (customerRole) {
+            await user.populate({
+                path: "role",
+                populate: {
+                    path: "permissions"
+                }
+            });
+        }
 
         //producer
         await emailQueue.add("welcome-email", {
@@ -112,7 +128,12 @@ export const login = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "all filed are required" })
         }
 
-        const user = await User.findOne({ email })
+        const user = await User.findOne({ email }) .populate({
+                path: "role",
+                populate: {
+                    path: "permissions"
+                }
+            });
 
         if (!user) {
             return res.status(400).json({ message: "user not found" })

@@ -104,4 +104,22 @@ export const api = {
         body: JSON.stringify({ orderId }),
       }),
   },
+  review: {
+    create: (productId, rating, comment) =>
+      request('/review/create', {
+        method: 'POST',
+        body: JSON.stringify({ productId, rating, comment }),
+      }),
+    get: (productId, page = 1, limit = 10) =>
+      request(`/review/get/${productId}?page=${page}&limit=${limit}`),
+    update: (id, rating, comment) =>
+      request(`/review/update/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ rating, comment }),
+      }),
+    delete: (id) =>
+      request(`/review/delete/${id}`, {
+        method: 'DELETE',
+      }),
+  },
 };
