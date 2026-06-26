@@ -8,7 +8,7 @@ export const cuurentUser = async(req:AuthRequest,res:Response)=>{
         const user = await User.findById(req.user?.userId).select("-password")
     
         if (!user) {
-            return res.status(404).json({message:"User not found"}
+            return res.status(404).json({message:"User not found"})
         }
 
         return res.status(200).json({message:"profile fatched successfully",data:user})
