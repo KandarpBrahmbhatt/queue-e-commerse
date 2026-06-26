@@ -12,7 +12,8 @@ const permissionSchema = new Schema<IPermission>(
             required: true,
             unique: true,
             uppercase: true
-        }
+        },
+
     },
     { timestamps: true }
 );

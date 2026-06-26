@@ -1,5 +1,6 @@
 // models/role.model.ts
 import mongoose, { Schema, Document } from "mongoose";
+import "./permission.model";
 
 export interface IRole extends Document {
     name: string;

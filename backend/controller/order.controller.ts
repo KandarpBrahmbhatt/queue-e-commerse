@@ -2,13 +2,14 @@ import { Request, Response } from 'express'
 import Order from '../models/order.model'
 import { Cart } from '../models/card.model'
 import User, { AuthRequest } from '../models/user.model'
+import Coupon from '../models/coupan.model'
 import { orderEmailQueue } from '../queue/order.queue'
 import mongoose from 'mongoose'
 
 export const createOrder = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?.userId
-        const { shippingAddress, paymentMethod } = req.body // Extracted from request body (added by AI assistant)
+        const { shippingAddress, paymentMethod, couponCode } = req.body // Extracted from request body (added by AI assistant)
 
         // const cart = await Cart.findOne({ userId })
         const cart = await Cart.findOne({ user: userId })
@@ -16,10 +17,28 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ message: "cart is empty " })
         }
 
-        let totalAmount = 0
+        let subtotal = 0
 
         for (const item of cart.items) {
-            totalAmount += item.price * item.quantity
+            subtotal += item.price * item.quantity
+        }
+
+        let discountAmount = 0;
+        let totalAmount = subtotal;
+
+        if (couponCode) {
+            const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
+            if (coupon) {
+                if (subtotal >= coupon.minOrderValue) {
+                    if (coupon.discountType === "percentage") {
+                        discountAmount = (subtotal * coupon.discountValue) / 100;
+                    } else {
+                        discountAmount = coupon.discountValue;
+                    }
+                    discountAmount = Math.min(discountAmount, subtotal);
+                    totalAmount = subtotal - discountAmount;
+                }
+            }
         }
 
         const orderNumber = `ORD-${Date.now()}`;
@@ -42,6 +61,8 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
         const order = await Order.create({
             user: userId,
             items: cart.items,
+            subtotal: subtotal,
+            discountAmount: discountAmount,
             totalAmount: totalAmount,
             orderNumber,
             shippingAddress: mappedAddress, // Saved shipping address (added by AI assistant)

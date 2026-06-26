@@ -31,6 +31,12 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
               >
                 My Addresses
               </button>
+              <button 
+                className={`nav-link-btn ${activeTab === 'profile' ? 'active' : ''}`}
+                onClick={() => onTabChange('profile')}
+              >
+                My Profile
+              </button>
             </>
           )}
         </div>
@@ -44,7 +50,7 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
 
           {user ? (
             <div className="user-profile">
-              <div className="user-info">
+              <div className="user-info" onClick={() => onTabChange('profile')} style={{ cursor: 'pointer' }} title="View Profile">
                 <User size={16} className="user-avatar" />
                 <span className="user-name">{user.name}</span>
               </div>
@@ -198,6 +204,11 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
           display: flex;
           align-items: center;
           gap: 6px;
+          transition: opacity 0.2s;
+        }
+
+        .user-info:hover {
+          opacity: 0.85;
         }
 
         .user-avatar {

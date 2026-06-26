@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Star, ShoppingCart } from 'lucide-react';
 
-export default function ProductCard({ product, onAddToCart, user, onViewReviews }) {
+export default function ProductCard({ product, onAddToCart, user, onViewReviews, onOpenDetail }) {
   const [imageError, setImageError] = useState(false);
   const [adding, setAdding] = useState(false);
 
@@ -30,7 +30,12 @@ export default function ProductCard({ product, onAddToCart, user, onViewReviews 
 
   return (
     <div className={`product-card glass-panel ${isOutOfStock ? 'out-of-stock' : ''}`}>
-      <div className="product-image-container">
+      <div 
+        className="product-image-container"
+        onClick={() => onOpenDetail && onOpenDetail(product._id)}
+        style={{ cursor: 'pointer' }}
+        title="View details"
+      >
         {imageError ? (
           <div 
             className="product-image-fallback" 
@@ -50,7 +55,14 @@ export default function ProductCard({ product, onAddToCart, user, onViewReviews 
       </div>
 
       <div className="product-info">
-        <h3 className="product-title" title={product.name}>{product.name}</h3>
+        <h3 
+          className="product-title" 
+          title={product.name}
+          onClick={() => onOpenDetail && onOpenDetail(product._id)}
+          style={{ cursor: 'pointer' }}
+        >
+          {product.name}
+        </h3>
         
         <div className="product-rating-row">
           <div 

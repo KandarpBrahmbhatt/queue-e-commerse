@@ -155,7 +155,7 @@ async function seedAddresses() {
   const users = await User.find().select("_id").lean();
 
   if (users.length === 0) {
-    console.log("⚠️ No users found in database. Please seed Users first!");
+    console.log(" No users found in database. Please seed Users first!");
     return;
   }
 
@@ -199,11 +199,11 @@ async function seedCart(){
   const products = await Product.find().select("_id price").lean();
 
   if (users.length === 0) {
-    console.log("⚠️ No users found in database. Please seed Users first!");
+    console.log(" No users found in database. Please seed Users first!");
     return;
   }
   if (products.length === 0) {
-    console.log("⚠️ No products found in database. Please seed Products first!");
+    console.log(" No products found in database. Please seed Products first!");
     return;
   }
 
@@ -258,11 +258,11 @@ async function seedOrders() {
   const products = await Product.find().select("_id price name").lean();
 
   if (users.length === 0) {
-    console.log("⚠️ No users found in database. Please seed Users first!");
+    console.log(" No users found in database. Please seed Users first!");
     return;
   }
   if (products.length === 0) {
-    console.log("⚠️ No products found in database. Please seed Products first!");
+    console.log(" No products found in database. Please seed Products first!");
     return;
   }
 
@@ -325,11 +325,11 @@ async function seedReviews() {
   const products = await Product.find().select("_id").lean();
 
   if (users.length === 0) {
-    console.log("⚠️ No users found in database. Please seed Users first!");
+    console.log("No users found in database. Please seed Users first!");
     return;
   }
   if (products.length === 0) {
-    console.log("⚠️ No products found in database. Please seed Products first!");
+    console.log(" No products found in database. Please seed Products first!");
     return;
   }
 
@@ -368,7 +368,7 @@ async function seedReviews() {
 //     await seedOrders();
 //     await seedReviews();
 
-//     console.log("🎉 1M DATA SEEDED SUCCESSFULLY");
+//     console.log(" 1M DATA SEEDED SUCCESSFULLY");
 
 //     process.exit(0);
 //   } catch (err) {
@@ -546,7 +546,7 @@ default:
 
 }
     console.log(
-      "🎉 Seeder completed successfully"
+      "Seeder completed successfully"
     );
 
 

@@ -112,9 +112,9 @@ export const signup = async (req: Request, res: Response) => {
             maxAge: 7 * 24 * 60 * 60 * 1000,
         })
         return res.status(200).json({ message: "signup successfully", user, AccessToken, RefreshToken })
-    } catch (error) {
+    } catch (error:any) {
         console.log("signup error", error)
-        return res.status(500).json({ messsage: "signup error", error })
+        return res.status(500).json({ messsage: "signup error", error:error.message })
     }
 }
 

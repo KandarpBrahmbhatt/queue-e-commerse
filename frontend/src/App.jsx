@@ -6,6 +6,8 @@ import ProductCard from './components/ProductCard';
 import CartDrawer from './components/CartDrawer';
 import Notification from './components/Notification';
 import AddressManager from './components/AddressManager'; // Imported AddressManager (added by AI assistant)
+import ProfileManager from './components/ProfileManager';
+import ProductDetailModal from './components/ProductDetailModal';
 import { Search, ChevronLeft, ChevronRight, ShoppingBag, ArrowRight, Star } from 'lucide-react';
 import { io } from 'socket.io-client';
 import ChatbotWidget from './components/ChatbotWidget';
@@ -78,6 +80,9 @@ export default function App() {
   const [reviewMode, setReviewMode] = useState('view');
   const [reviewProductId, setReviewProductId] = useState(null);
   const [reviewProductName, setReviewProductName] = useState('');
+
+  // Product Detail Modal State
+  const [selectedProductId, setSelectedProductId] = useState(null);
 
   const handleWriteReview = (productId, productName) => {
     setReviewProductId(productId);
@@ -297,6 +302,7 @@ export default function App() {
                       onAddToCart={handleAddToCart}
                       user={user}
                       onViewReviews={handleViewReviews}
+                      onOpenDetail={setSelectedProductId}
                     />
                   ))}
                 </div>
@@ -330,6 +336,8 @@ export default function App() {
           </>
         ) : activeTab === 'addresses' ? ( // Added addresses tab route (added by AI assistant)
           <AddressManager showNotification={showNotification} />
+        ) : activeTab === 'profile' ? (
+          <ProfileManager onUserUpdate={setUser} showNotification={showNotification} onOpenProductDetail={setSelectedProductId} />
         ) : (
           <div className="orders-container">
             <h2 className="orders-title">My Order History</h2>
@@ -578,6 +586,16 @@ export default function App() {
         productName={reviewProductName}
         showNotification={showNotification}
       />
+
+      {/* Product Detail Modal */}
+      {selectedProductId && (
+        <ProductDetailModal 
+          productId={selectedProductId}
+          onClose={() => setSelectedProductId(null)}
+          onAddToCart={handleAddToCart}
+          showNotification={showNotification}
+        />
+      )}
 
       <style>{`
         /* Hero Banner */

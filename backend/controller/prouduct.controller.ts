@@ -3,6 +3,9 @@ import Product from '../models/product.model'
 import mongoose from 'mongoose'
 import connection from '../config/redis'
 import uploadOnCloudinary from '../config/cloudinary'
+import { AssistantStream } from 'openai/lib/AssistantStream'
+import { AuthRequest } from '../models/user.model'
+import RecentView from '../models/recentView.model'
 
 
 export const createProudct = async (req: Request, res: Response) => {
@@ -67,7 +70,75 @@ export const getAllProduct = async (req: Request, res: Response) => {
     }
 }
 
+export const getCurrentProduct = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
 
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    // SAVE RECENT VIEW
+    if (req.user?.userId) {
+      const existing = await RecentView.findOne({
+        user: req.user.userId,
+        productId: new mongoose.Types.ObjectId(String(id)),
+      });
+
+      if (existing) {
+        existing.viewAt = new Date();
+        await existing.save();
+      } else {
+        await RecentView.create({
+          user: req.user.userId,
+          productId: new mongoose.Types.ObjectId(String(id)),
+        });
+      }
+    }
+
+    return res.status(200).json({
+      message: "getting currentProduct successfully",
+      data: product,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      message: "getting currentProduct error",
+      error: error.message,
+    });
+  }
+};
+// getRecentview product
+
+export const getRecentViewed = async(req:AuthRequest,res:Response) =>{
+    try {
+        const userId = req.user?.userId
+
+        const recent = await RecentView.find({user:userId})
+                .populate("productId")
+                .sort({viewAt:-1})
+                .limit(10)
+
+                return res.status(200).json({message:"GettingRecentView successfully",recent})
+    } catch (error:any) {
+        console.log(`getRecentViewed error ${error}`)
+        return res.status(500).json({message:"GettingRecentView successfully",error:error.message})
+    }
+}
+
+export const clearRecentView  = async(req:AuthRequest,res:Response)=>{
+    try {
+        await RecentView.deleteMany({user:req.user?.userId})
+
+        return res.status(200).json({message:"clearRecentView sucessfully"})
+    } catch (error:any) {
+        console.log(`clearRecentView error  ${error}`)
+        return res.status(500).json({message:"clearRecentView error",error:error.message})
+    }
+}
 export const updateProduct = async (req: Request, res: Response) => {
     try {
         const productId = req.params.id

@@ -56,6 +56,12 @@ export const api = {
       }
       return request(url);
     },
+    getCurrentProduct: (id) => request(`/product/currentProduct/${id}`),
+    getRecent: () => request('/product/recent'),
+    clearRecent: () =>
+      request('/product/recent', {
+        method: 'DELETE',
+      }),
   },
   orders: {
     create: (orderData = {}) => // Modified to accept orderData (added by AI assistant)
@@ -104,6 +110,14 @@ export const api = {
         body: JSON.stringify({ orderId }),
       }),
   },
+  coupon: {
+    apply: (code, cartTotal) =>
+      request('/coupon/apply', {
+        method: 'POST',
+        body: JSON.stringify({ code, cartTotal }),
+      }),
+    list: () => request('/coupon/list'),
+  },
   review: {
     create: (productId, rating, comment) =>
       request('/review/create', {
@@ -120,6 +134,14 @@ export const api = {
     delete: (id) =>
       request(`/review/delete/${id}`, {
         method: 'DELETE',
+      }),
+  },
+  profile: {
+    get: () => request('/profile/currentProfile'),
+    update: (profileData) =>
+      request('/profile/update', {
+        method: 'PUT',
+        body: JSON.stringify(profileData),
       }),
   },
 };

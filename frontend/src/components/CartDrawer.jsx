@@ -13,6 +13,19 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
 
   // Address states
   const [addresses, setAddresses] = useState([]);
+
+  // Coupon states
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discount, finalAmount }
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
+
+  // Clear coupon if cart changes to prevent calculation mismatch
+  useEffect(() => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+  }, [cart]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [showAddressForm, setShowAddressForm] = useState(false);
@@ -47,12 +60,76 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
     }
   };
 
+  const fetchCoupons = async () => {
+    setCouponsLoading(true);
+    try {
+      const response = await api.coupon.list();
+      setAvailableCoupons(response.data || []);
+    } catch (err) {
+      console.log('Failed to fetch coupons', err);
+    } finally {
+      setCouponsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchAddresses();
+      fetchCoupons();
       setShowAddressForm(false);
     }
   }, [isOpen]);
+
+  const applySelectedCoupon = async (code) => {
+    setApplyingCoupon(true);
+    try {
+      const response = await api.coupon.apply(code, subtotal);
+      if (response.success) {
+        setAppliedCoupon({
+          code: code.toUpperCase(),
+          discount: response.data.discount,
+          finalAmount: response.data.finalAmount
+        });
+        showNotification('Coupon applied successfully!', 'success');
+      } else {
+        showNotification(response.message || 'Invalid coupon', 'error');
+      }
+    } catch (err) {
+      showNotification(err.message || 'Failed to apply coupon', 'error');
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleApplyCoupon = async (e) => {
+    e.preventDefault();
+    if (!couponCode.trim()) return;
+
+    setApplyingCoupon(true);
+    try {
+      const response = await api.coupon.apply(couponCode, subtotal);
+      if (response.success) {
+        setAppliedCoupon({
+          code: couponCode.toUpperCase(),
+          discount: response.data.discount,
+          finalAmount: response.data.finalAmount
+        });
+        showNotification('Coupon applied successfully!', 'success');
+      } else {
+        showNotification(response.message || 'Invalid coupon', 'error');
+      }
+    } catch (err) {
+      showNotification(err.message || 'Failed to apply coupon', 'error');
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    showNotification('Coupon removed', 'info');
+  };
 
   const handleSaveAndSelectAddress = async (e) => {
     e.preventDefault();
@@ -150,8 +227,11 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
 
     setCheckingOut(true);
     try {
-      // Pass the selected address to the backend createOrder function
-      const response = await api.orders.create({ shippingAddress });
+      // Pass the selected address and couponCode to the backend createOrder function
+      const response = await api.orders.create({ 
+        shippingAddress, 
+        couponCode: appliedCoupon ? appliedCoupon.code : undefined 
+      });
       showNotification('Order placed successfully! Redirecting to checkout...', 'success');
       onCartChange({ items: [] });
       onClose();
@@ -390,6 +470,88 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
 
         {cartItems.length > 0 && (
           <div className="cart-footer">
+            {/* Coupon Application UI */}
+            <div className="cart-coupon-section">
+              {appliedCoupon ? (
+                <div className="applied-coupon-badge glass-panel">
+                  <div className="coupon-badge-info">
+                    <span className="coupon-badge-code">{appliedCoupon.code}</span>
+                    <span className="coupon-badge-desc">Saved ₹{appliedCoupon.discount.toLocaleString()}</span>
+                  </div>
+                  <button className="coupon-remove-btn" onClick={handleRemoveCoupon}>
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="coupon-controls">
+                  {/* Coupon Dropdown Selection */}
+                  {availableCoupons.length > 0 && (
+                    <div className="coupon-dropdown-group">
+                      <select
+                        className="coupon-select-input"
+                        value={appliedCoupon ? appliedCoupon.code : ''}
+                        onChange={(e) => {
+                          const selectedCode = e.target.value;
+                          if (selectedCode) {
+                            const found = availableCoupons.find(c => c.code === selectedCode);
+                            if (found) {
+                              if (subtotal < found.minOrderValue) {
+                                showNotification(`Min. order of ₹${found.minOrderValue} required for ${found.code}`, 'error');
+                                return;
+                              }
+                              setCouponCode(found.code);
+                              applySelectedCoupon(found.code);
+                            }
+                          }
+                        }}
+                        disabled={applyingCoupon}
+                      >
+                        <option value="">-- Select Eligible Coupon --</option>
+                        {availableCoupons.map(coupon => {
+                          const isEligible = subtotal >= coupon.minOrderValue;
+                          const discountText = coupon.discountType === 'percentage' 
+                            ? `${coupon.discountValue}% OFF` 
+                            : `₹${coupon.discountValue} OFF`;
+                          const label = isEligible 
+                            ? `${coupon.code} (${discountText})`
+                            : `${coupon.code} (Min. ₹${coupon.minOrderValue} req.)`;
+                          return (
+                            <option 
+                              key={coupon._id} 
+                              value={coupon.code}
+                              disabled={!isEligible}
+                              style={{ color: isEligible ? 'var(--text-main)' : 'rgba(255,255,255,0.3)' }}
+                            >
+                              {label}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Or Manual Coupon Input */}
+                  <form onSubmit={handleApplyCoupon} className="coupon-apply-form">
+                    <input
+                      type="text"
+                      placeholder="Or enter coupon code manually"
+                      className="coupon-input"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      disabled={applyingCoupon}
+                    />
+                    <button
+                      type="submit"
+                      className="btn btn-secondary btn-sm coupon-apply-btn"
+                      disabled={applyingCoupon || !couponCode.trim()}
+                    >
+                      {applyingCoupon ? 'Applying...' : 'Apply'}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+
             <div className="cart-summary">
               <div className="summary-row">
                 <span>Price ({totalItems} items)</span>
@@ -399,9 +561,17 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
                 <span>Delivery Charges</span>
                 <span className="summary-val delivery-free">FREE</span>
               </div>
+              {appliedCoupon && (
+                <div className="summary-row discount">
+                  <span>Coupon Discount ({appliedCoupon.code})</span>
+                  <span className="summary-val discount-val">- ₹{appliedCoupon.discount.toLocaleString()}</span>
+                </div>
+              )}
               <div className="summary-row total">
                 <span>Total Amount</span>
-                <span className="summary-val total-price">₹{subtotal.toLocaleString()}</span>
+                <span className="summary-val total-price">
+                  ₹{(appliedCoupon ? appliedCoupon.finalAmount : subtotal).toLocaleString()}
+                </span>
               </div>
             </div>
 
@@ -881,6 +1051,115 @@ export default function CartDrawer({ isOpen, onClose, cart, onCartChange, showNo
           margin-top: 8px;
           border-top: 1px solid var(--border-color);
           padding-top: 12px;
+        }
+
+        .cart-coupon-section {
+          margin-bottom: 16px;
+          border-bottom: 1px solid var(--border-color);
+          padding-bottom: 16px;
+        }
+
+        .coupon-controls {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .coupon-dropdown-group {
+          width: 100%;
+        }
+
+        .coupon-select-input {
+          width: 100%;
+          background: rgba(0, 0, 0, 0.2);
+          border: 1px solid var(--border-color);
+          padding: 8px 12px;
+          border-radius: var(--radius-xs);
+          color: var(--text-main);
+          font-size: 0.85rem;
+          cursor: pointer;
+        }
+
+        .coupon-select-input:focus {
+          outline: none;
+          border-color: var(--primary);
+        }
+
+        .coupon-apply-form {
+          display: flex;
+          gap: 10px;
+        }
+
+        .coupon-input {
+          flex: 1;
+          background: rgba(0, 0, 0, 0.2);
+          border: 1px solid var(--border-color);
+          padding: 8px 12px;
+          border-radius: var(--radius-xs);
+          color: var(--text-main);
+          font-size: 0.85rem;
+          text-transform: uppercase;
+        }
+
+        .coupon-input:focus {
+          outline: none;
+          border-color: var(--primary);
+        }
+
+        .coupon-apply-btn {
+          padding: 8px 16px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
+
+        .applied-coupon-badge {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          padding: 10px 14px;
+          border-radius: var(--radius-sm);
+        }
+
+        .coupon-badge-info {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 2px;
+        }
+
+        .coupon-badge-code {
+          font-size: 0.9rem;
+          font-weight: 700;
+          color: #10b981;
+        }
+
+        .coupon-badge-desc {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+        }
+
+        .coupon-remove-btn {
+          background: transparent;
+          border: none;
+          color: var(--danger);
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 4px 8px;
+          border-radius: var(--radius-xs);
+          transition: background 0.2s;
+        }
+
+        .coupon-remove-btn:hover {
+          background: rgba(239, 68, 68, 0.1);
+        }
+
+        .discount-val {
+          color: #10b981;
+          font-weight: 700;
         }
       `}</style>
     </div>

@@ -19,6 +19,8 @@ import { initSocket } from './socket/socket';
 import http from 'http'
 import dotenv from "dotenv";
 import reviewRouter from './routes/review.routes';
+import couponRouter from './routes/coupon.routes';
+import currentProfileRouter from './routes/cuurent.routes';
 dotenv.config();
 const app = express()
 
@@ -40,6 +42,8 @@ app.use("/api/payment",paymentRouter)
 app.use("/api/invoice",pdfRouter)
 app.use("/api/address",addressRouter)
 app.use("/api/review",reviewRouter)
+app.use("/api/coupon",couponRouter)
+app.use("/api/profile",currentProfileRouter)
 const port = 5000
 // app.listen(port, () => {
 //     console.log(`Server Running ${port}`);
