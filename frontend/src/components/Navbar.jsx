@@ -11,46 +11,64 @@ export default function Navbar({ user, cartCount, onCartClick, onAuthClick, onLo
         </div>
 
         <div className="nav-links">
-          <button 
-            className={`nav-link-btn ${activeTab === 'shop' ? 'active' : ''}`}
-            onClick={() => onTabChange('shop')}
-          >
-            Explore Shop
-          </button>
-          {user && (
+          {user && user.role?.name === 'ADMIN' ? (
+            <button 
+              className={`nav-link-btn ${activeTab === 'admin' ? 'active' : ''}`}
+              onClick={() => onTabChange('admin')}
+            >
+              Admin Dashboard
+            </button>
+          ) : (
             <>
               <button 
-                className={`nav-link-btn ${activeTab === 'orders' ? 'active' : ''}`}
-                onClick={() => onTabChange('orders')}
+                className={`nav-link-btn ${activeTab === 'shop' ? 'active' : ''}`}
+                onClick={() => onTabChange('shop')}
               >
-                My Orders
+                Explore Shop
               </button>
-              <button 
-                className={`nav-link-btn ${activeTab === 'addresses' ? 'active' : ''}`}
-                onClick={() => onTabChange('addresses')}
-              >
-                My Addresses
-              </button>
-              <button 
-                className={`nav-link-btn ${activeTab === 'profile' ? 'active' : ''}`}
-                onClick={() => onTabChange('profile')}
-              >
-                My Profile
-              </button>
+              {user && (
+                <>
+                  <button 
+                    className={`nav-link-btn ${activeTab === 'orders' ? 'active' : ''}`}
+                    onClick={() => onTabChange('orders')}
+                  >
+                    My Orders
+                  </button>
+                  <button 
+                    className={`nav-link-btn ${activeTab === 'addresses' ? 'active' : ''}`}
+                    onClick={() => onTabChange('addresses')}
+                  >
+                    My Addresses
+                  </button>
+                  <button 
+                    className={`nav-link-btn ${activeTab === 'profile' ? 'active' : ''}`}
+                    onClick={() => onTabChange('profile')}
+                  >
+                    My Profile
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
 
         <div className="nav-actions">
-          <button className="cart-trigger" onClick={onCartClick}>
-            <ShoppingCart size={20} />
-            <span className="cart-label">Cart</span>
-            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
-          </button>
+          {(!user || user.role?.name !== 'ADMIN') && (
+            <button className="cart-trigger" onClick={onCartClick}>
+              <ShoppingCart size={20} />
+              <span className="cart-label">Cart</span>
+              {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+            </button>
+          )}
 
           {user ? (
             <div className="user-profile">
-              <div className="user-info" onClick={() => onTabChange('profile')} style={{ cursor: 'pointer' }} title="View Profile">
+              <div 
+                className="user-info" 
+                onClick={() => user.role?.name === 'ADMIN' ? onTabChange('admin') : onTabChange('profile')} 
+                style={{ cursor: 'pointer' }} 
+                title={user.role?.name === 'ADMIN' ? "View Dashboard" : "View Profile"}
+              >
                 <User size={16} className="user-avatar" />
                 <span className="user-name">{user.name}</span>
               </div>

@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import Order from "../models/order.model"
+import Order, { OrderStatus } from "../models/order.model"
 
 
 export const assignDeliveryPerson = async (req: any, res: any) => {
@@ -13,10 +13,10 @@ export const assignDeliveryPerson = async (req: any, res: any) => {
     }
 
     order.deliveryPerson = deliveryPersonId;
-    order.orderStatus = "SHIPPED";
+    order.orderStatus = OrderStatus.SHIPPED;
 
     order.trackingHistory.push({
-      status: "SHIPPED",
+      status: OrderStatus.SHIPPED,
       updatedAt: new Date(),
     });
 
@@ -42,10 +42,10 @@ export const updateOrderStatus = async (req: any, res: any) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    order.status = status;
+    order.orderStatus = status as OrderStatus;
 
     order.trackingHistory.push({
-      status,
+      status: status,
       updatedAt: new Date(),
     });
 
@@ -53,6 +53,28 @@ export const updateOrderStatus = async (req: any, res: any) => {
 
     return res.status(200).json({
       message: "Order status updated",
+      data: order,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+
+export const getOrderTracking = async (req: any, res: any) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId)
+      .populate("deliveryPerson", "name email")
+      .select("status trackingHistory deliveryPerson");
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    return res.status(200).json({
+      message: "Tracking fetched",
       data: order,
     });
   } catch (error: any) {

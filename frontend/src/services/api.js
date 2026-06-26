@@ -73,6 +73,34 @@ export const api = {
       request(`/order/getaggragationOrder?page=${page}&limit=${limit}`),
     getCurrentUser: () =>
       request('/order/getCuurentUserOrder'),
+    cancel: (orderId) =>
+      request(`/order/cancel/${orderId}`, {
+        method: 'PATCH',
+      }),
+    requestReturn: (orderId, reason) =>
+      request(`/order/return/${orderId}`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      }),
+    requestReplacement: (orderId, reason) =>
+      request(`/order/replace/${orderId}`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      }),
+    getAll: (page = 1, limit = 10) =>
+      request(`/order/get?page=${page}&limit=${limit}`),
+    approveReturn: (orderId) =>
+      request(`/order/approve-return/${orderId}`, {
+        method: 'PATCH',
+      }),
+    markAsShipped: (orderId) =>
+      request(`/order/shipped/${orderId}`, {
+        method: 'PATCH',
+      }),
+    markAsDelivered: (orderId) =>
+      request(`/order/delivered/${orderId}`, {
+        method: 'PATCH',
+      }),
   },
   address: { // Added address API module (added by AI assistant)
     get: () => request('/address/get'),

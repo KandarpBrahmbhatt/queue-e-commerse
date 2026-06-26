@@ -13,7 +13,7 @@ const genToken = (user: any) => {
             permissions: permissions 
         }, 
         process.env.JWT_SECRET!, 
-        { expiresIn: "15m" }
+        { expiresIn: "7d" }
     );
 
     const RefreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET!, { expiresIn: "7d" })

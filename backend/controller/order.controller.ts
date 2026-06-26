@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import Order from '../models/order.model'
+import Order, { OrderStatus, ReplacementStatus, ReturnStatus } from '../models/order.model'
 import { Cart } from '../models/card.model'
 import User, { AuthRequest } from '../models/user.model'
 import Coupon from '../models/coupan.model'
@@ -133,6 +133,7 @@ export const getOrder = async (req: Request, res: Response) => {
         const skip = ((page - 1) * limit)
 
         const order = await Order.find()
+            .populate("user", "name email")
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: -1 })
@@ -163,6 +164,139 @@ export const getCuurentUserOrder = async (req: AuthRequest, res: Response) => {
         return res.status(500).json({ message: "getCurrentUserOrder successfully", error })
     }
 }
+
+
+export const cancelOrder = async (req: AuthRequest, res: Response) => {
+    try {
+        const { orderId } = req.params
+
+        if (!orderId) {
+            return res.status(400).json({ message: "order not found invalid orderId" })
+        }
+
+        const order = await Order.findById(orderId)
+
+        if (!order) {
+            return res.status(400).json({ message: "order not found" })
+        }
+
+        // Customer can cancel only their own order
+        if (order.user.toString() !== req.user?.userId) {
+            return res.status(403).json({ message: "Unauthorized" })
+        }
+
+        // Already cancelled
+        if (order.orderStatus === "CANCELLED") {
+            return res.status(400).json({ message: "orderCanceled alredat cancelled" })
+        }
+
+        //  Cannot cancel after shipping
+
+        const blockStatus = [
+            "SHIPPED",
+            "DELIVERD",
+        ]
+
+        if (blockStatus.includes(order.orderStatus)) {
+            return res.status(400).json({ message: "order cannot be cancelled now" })
+        }
+
+        const orderTime = new Date(order.createdAt).getTime()
+        const now = Date.now()
+
+        const DiffMinutes = (now - orderTime) / (1000 * 60)
+        //  order can cancel 30 minute after than order can not ableto cancel
+        if (DiffMinutes > 30) {
+            return res.status(400).json({ message: "Canecelltion time expire" })
+        }
+
+        order.orderStatus = OrderStatus.CANCELLED;
+        await order.save()
+
+
+        return res.status(200).json({
+            success: true,
+            message: "Order cancelled successfully",
+            data: order,
+        });
+    } catch (error) {
+        console.log(`cancelOrder error ${error}`)
+        return res.status(500).json({ message: "Order cancelled error" });
+    }
+}
+
+export const requestReturn = async (req: AuthRequest, res: Response) => {
+    try {
+        const { orderId } = req.params
+        const { reason } = req.body
+
+        const order = await Order.findById(orderId)
+
+        if (!order) {
+            return res.status(400).json({ message: "order not found" })
+        }
+
+        if (order.orderStatus !== OrderStatus.DELIVERD) {
+            return res.status(400).json({ message: "Only delivery order can be returned" })
+        }
+
+        const diffDays = (Date.now() - new Date(order.deliveredAt!).getTime()) / (1000 * 60 * 60 * 24);
+
+        if (diffDays > 7) {
+            return res.status(400).json({ message: "Return window expired (7 days)" });
+        }
+
+        order.returnStatus = ReturnStatus.REQUESTED
+        order.returnReason = reason
+
+        await order.save()
+
+        return res.status(200).json({ message: "requestResturn successfully", order })
+    } catch (error: any) {
+        console.log(`requestReturn error ${error}`)
+        return res.status(500).json({ message: "requestResturn error", error: error.message })
+
+    }
+}
+
+export const requestReplacement = async (req: AuthRequest, res: Response) => {
+    try {
+        const { orderId } = req.params;
+        const { reason } = req.body;
+        // const userId = req.user?.userId;
+
+        const order = await Order.findById(orderId);
+
+        if (!order) return res.status(404).json({ message: "Order not found" });
+
+        // if (order.user.toString() !== userId)
+        //     return res.status(403).json({ message: "Unauthorized" });
+
+        if (order.orderStatus !== OrderStatus.DELIVERD) {
+            return res.status(400).json({ message: "Only delivered orders can be replaced" });
+        }
+
+        const diffDays =(Date.now() - new Date(order.deliveredAt!).getTime()) /(1000 * 60 * 60 * 24);
+
+        if (diffDays > 7) {
+            return res.status(400).json({ message: "Replacement window expired" });
+        }
+
+        order.replacementStatus = ReplacementStatus.REQUESTED;
+        order.replacementRequestedAt = new Date();
+        order.replacementReason = reason;
+
+        await order.save();
+
+        return res.json({
+            success: true,
+            message: "Replacement request submitted"
+        });
+
+    } catch (error) {
+        return res.status(500).json({ message: "Server error", error });
+    }
+};
 
 export const getaggragationOrder = async (req: AuthRequest, res: Response) => {
     try {
@@ -230,4 +364,61 @@ export const getaggragationOrder = async (req: AuthRequest, res: Response) => {
     }
 };
 
+// apprve admin system
 
+export const approveReturn = async (req: AuthRequest, res: Response) => {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) return res.status(404).json({ message: "Not found" });
+
+    order.returnStatus = ReturnStatus.APPROVED;
+
+    await order.save();
+
+    return res.json({ message: "Return approved" });
+};
+
+
+//admin
+export const markAsShipped = async (req: Request, res: Response) => {
+  const { orderId } = req.params;
+
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  order.orderStatus = OrderStatus.SHIPPED;
+  order.shippedAt = new Date();
+
+  await order.save();
+
+  return res.json({
+    message: "Order marked as shipped",
+    order,
+  });
+};
+
+//admin
+export const markAsDelivered = async (req: Request, res: Response) => {
+  const { orderId } = req.params;
+
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  order.orderStatus = OrderStatus.DELIVERD;
+  order.deliveredAt = new Date();
+
+  await order.save();
+
+  return res.json({
+    message: "Order delivered successfully",
+    order,
+  });
+};

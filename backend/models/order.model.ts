@@ -25,6 +25,26 @@ export enum PaymentMethod {
     WALLET = "WALLET"
 }
 
+export enum ReturnStatus {
+    NONE = "NONE",
+    REQUESTED = "REQUESTED",
+    APPROVED = "APPROVED",
+    REJECTED = "REJECTED",
+    PICKED = "PICKED",
+    REFUNDED = "REFUNDED",
+    COMPLETED = "COMPLETED"
+}
+
+export enum ReplacementStatus {
+    NONE = "NONE",
+    REQUESTED = "REQUESTED",
+    APPROVED = "APPROVED",
+    REJECTED = "REJECTED",
+    SHIPPED = "SHIPPED",
+    DELIVERED = "DELIVERED",
+    COMPLETED = "COMPLETED"
+}
+
 export interface IOrderItem {
     product: Types.ObjectId;
 
@@ -90,6 +110,8 @@ export interface IOrder extends Document {
 
     notes?: string;
 
+    shippedAt?: Date
+
     deliveredAt?: Date;
 
     cancelledAt?: Date;
@@ -100,7 +122,19 @@ export interface IOrder extends Document {
 
     deliveryPerson: Types.ObjectId;
 
-    trackingHistory: string
+    returnStatus: string;
+
+    replacementStatus: string;
+
+    returnRequestedAt: Date,
+    returnReason: String,
+
+    replacementRequestedAt: Date,
+    replacementReason: String,
+    trackingHistory: Array<{
+        status: string;
+        updatedAt: Date;
+    }>;
 }
 
 
@@ -290,6 +324,10 @@ const OrderSchema = new Schema<IOrder>(
             maxlength: 500,
         },
 
+        shippedAt: {
+            type: Date,
+        },
+
         deliveredAt: {
             type: Date,
         },
@@ -307,7 +345,24 @@ const OrderSchema = new Schema<IOrder>(
                 updatedAt: Date,
                 // location?: String 
             }
-        ]
+        ],
+        returnStatus: {
+            type: String,
+            enum: Object.values(ReturnStatus),
+            default: ReturnStatus.NONE
+        },
+
+        replacementStatus: {
+            type: String,
+            enum: Object.values(ReplacementStatus),
+            default: ReplacementStatus.NONE
+        },
+
+        returnRequestedAt: Date,
+        returnReason: String,
+
+        replacementRequestedAt: Date,
+        replacementReason: String,
     },
     {
         timestamps: true,

@@ -11,7 +11,7 @@ export const cuurentUser = async(req:AuthRequest,res:Response)=>{
             return res.status(404).json({message:"User not found"})
         }
 
-        // return res.status(200).json({message:"profile fatched successfully",data:user})
+        return res.status(200).json({message:"profile fatched successfully",data:user})
     } catch (error:any) {
         console.log(`cuurent user error ${error}`)
         return res.status(500).json({message:"cuurent user error",error:error.message})

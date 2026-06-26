@@ -8,6 +8,7 @@ import Notification from './components/Notification';
 import AddressManager from './components/AddressManager'; // Imported AddressManager (added by AI assistant)
 import ProfileManager from './components/ProfileManager';
 import ProductDetailModal from './components/ProductDetailModal';
+import AdminDashboard from './components/AdminDashboard';
 import { Search, ChevronLeft, ChevronRight, ShoppingBag, ArrowRight, Star } from 'lucide-react';
 import { io } from 'socket.io-client';
 import ChatbotWidget from './components/ChatbotWidget';
@@ -67,6 +68,15 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [notification, setNotification] = useState(null);
   const [productsLoading, setProductsLoading] = useState(false);
+
+  // Auto-redirect admin to dashboard
+  useEffect(() => {
+    if (user?.role?.name === 'ADMIN') {
+      setActiveTab('admin');
+    } else if (activeTab === 'admin') {
+      setActiveTab('shop');
+    }
+  }, [user]);
 
   // Orders State
   const [orders, setOrders] = useState([]);
@@ -144,6 +154,56 @@ export default function App() {
       setOrdersLoading(false);
     }
   }, [user, showNotification]);
+
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to cancel this order?')) return;
+    try {
+      const response = await api.orders.cancel(orderId);
+      showNotification(response.message || 'Order cancelled successfully', 'success');
+      fetchOrders();
+    } catch (err) {
+      showNotification(err.message || 'Failed to cancel order', 'error');
+    }
+  };
+
+  const handleRequestReturn = async (orderId) => {
+    const reason = window.prompt('Please enter the reason for returning this order:');
+    if (reason === null) return; // user cancelled
+    if (!reason.trim()) {
+      showNotification('A reason is required to request a return.', 'error');
+      return;
+    }
+    try {
+      const response = await api.orders.requestReturn(orderId, reason);
+      showNotification(response.message || 'Return request submitted successfully!', 'success');
+      fetchOrders();
+    } catch (err) {
+      showNotification(err.message || 'Failed to submit return request.', 'error');
+    }
+  };
+
+  const handleRequestReplacement = async (orderId) => {
+    const reason = window.prompt('Please enter the reason for replacing this order:');
+    if (reason === null) return; // user cancelled
+    if (!reason.trim()) {
+      showNotification('A reason is required to request a replacement.', 'error');
+      return;
+    }
+    try {
+      const response = await api.orders.requestReplacement(orderId, reason);
+      showNotification(response.message || 'Replacement request submitted successfully!', 'success');
+      fetchOrders();
+    } catch (err) {
+      showNotification(err.message || 'Failed to submit replacement request.', 'error');
+    }
+  };
+
+  const isCancellable = (order) => {
+    if (!order) return false;
+    if (['CANCELLED', 'SHIPPED', 'DELIVERD'].includes(order.orderStatus)) return false;
+    const elapsedMinutes = (new Date().getTime() - new Date(order.createdAt).getTime()) / 60000;
+    return elapsedMinutes <= 1.0;
+  };
 
   // Fetch Cart
   const fetchCart = useCallback(async () => {
@@ -338,6 +398,8 @@ export default function App() {
           <AddressManager showNotification={showNotification} />
         ) : activeTab === 'profile' ? (
           <ProfileManager onUserUpdate={setUser} showNotification={showNotification} onOpenProductDetail={setSelectedProductId} />
+        ) : activeTab === 'admin' ? (
+          <AdminDashboard showNotification={showNotification} />
         ) : (
           <div className="orders-container">
             <h2 className="orders-title">My Order History</h2>
@@ -402,16 +464,27 @@ export default function App() {
                             Placed on {new Date(order.createdAt).toLocaleDateString()}
                           </span>
                         </div>
-                        <span 
-                          className="order-status-badge"
-                          style={{
-                            backgroundColor: styleColors.bg,
-                            color: styleColors.text,
-                            borderColor: styleColors.border
-                          }}
-                        >
-                          {status}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {isCancellable(order) && (
+                            <button
+                              className="btn btn-danger"
+                              style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto', textTransform: 'none', background: 'var(--danger)', boxShadow: '0 2px 8px var(--danger-glow)' }}
+                              onClick={() => handleCancelOrder(order._id)}
+                            >
+                              Cancel Order
+                            </button>
+                          )}
+                          <span 
+                            className="order-status-badge"
+                            style={{
+                              backgroundColor: styleColors.bg,
+                              color: styleColors.text,
+                              borderColor: styleColors.border
+                            }}
+                          >
+                            {status}
+                          </span>
+                        </div>
                       </div>
                       
                       <div className="order-card-body">
@@ -493,6 +566,40 @@ export default function App() {
                                 </div>
                               ))}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Return / Replacement Actions for Delivered Orders */}
+                        {status === 'DELIVERD' && (
+                          <div style={{ display: 'flex', gap: '10px', marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px', flexWrap: 'wrap' }}>
+                            {(!order.returnStatus || order.returnStatus === 'NONE') && (
+                              <button 
+                                className="btn btn-outline btn-sm"
+                                style={{ padding: '6px 14px', fontSize: '0.75rem', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#f59e0b', textTransform: 'none' }}
+                                onClick={() => handleRequestReturn(order._id)}
+                              >
+                                Request Return
+                              </button>
+                            )}
+                            {(!order.replacementStatus || order.replacementStatus === 'NONE') && (
+                              <button 
+                                className="btn btn-outline btn-sm"
+                                style={{ padding: '6px 14px', fontSize: '0.75rem', borderColor: 'rgba(59, 130, 246, 0.4)', color: '#3b82f6', textTransform: 'none' }}
+                                onClick={() => handleRequestReplacement(order._id)}
+                              >
+                                Request Replacement
+                              </button>
+                            )}
+                            {(order.returnStatus && order.returnStatus !== 'NONE') && (
+                              <span className="status-badge" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '700' }}>
+                                Return: {order.returnStatus}
+                              </span>
+                            )}
+                            {(order.replacementStatus && order.replacementStatus !== 'NONE') && (
+                              <span className="status-badge" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '700' }}>
+                                Replacement: {order.replacementStatus}
+                              </span>
+                            )}
                           </div>
                         )}
 
