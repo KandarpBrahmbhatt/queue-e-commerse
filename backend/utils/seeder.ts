@@ -456,6 +456,195 @@ async function seedCoupons() {
   console.log("1 Million Coupons Seeded Successfully");
 }
 
+async function seedInventory() {
+  console.log("Seeding Inventory...");
+
+  await inventoryModel.deleteMany({});
+
+  const products = await Product.find()
+    .select("_id sku stock")
+    .lean();
+
+  if (!products.length) {
+    console.log("No products found.");
+    return;
+  }
+
+  for (let i = 0; i < products.length; i += BATCH_SIZE) {
+    const inventories = [];
+
+    const limit = Math.min(BATCH_SIZE, products.length - i);
+
+    for (let j = 0; j < limit; j++) {
+      const product = products[i + j];
+
+      const stock = faker.number.int({
+        min: 0,
+        max: 500,
+      });
+
+      const threshold = faker.number.int({
+        min: 5,
+        max: 20,
+      });
+
+      let status = InventoryStatus.IN_STOCK;
+
+      if (stock <= 0) {
+        status = InventoryStatus.OUT_OF_STOCK;
+      } else if (stock <= threshold) {
+        status = InventoryStatus.LOW_STOCK;
+      }
+
+      inventories.push({
+        productId: product._id,
+
+        sku:
+          product.sku ||
+          `SKU-${faker.string.alphanumeric(10)}`,
+
+        stock,
+
+        reservedStock: faker.number.int({
+          min: 0,
+          max: Math.min(stock, 20),
+        }),
+
+        lowStockThreshold: threshold,
+
+        warehouseLocation: faker.helpers.arrayElement([
+          "Ahmedabad Warehouse",
+          "Delhi Warehouse",
+          "Mumbai Warehouse",
+          "Bangalore Warehouse",
+        ]),
+
+        status,
+      });
+    }
+
+    await inventoryModel.insertMany(inventories);
+
+    console.log(
+      `Inventory: ${i + limit}/${products.length}`
+    );
+  }
+
+  console.log("Inventory Seeded Successfully");
+}
+
+async function seedInventoryLogs() {
+  console.log("Seeding Inventory Logs...");
+
+  await inventorylogModel.deleteMany({});
+
+  const inventories = await inventoryModel.find()
+    .select("_id productId stock")
+    .lean();
+
+  const users = await User.find()
+    .select("_id")
+    .lean();
+
+  if (!inventories.length) {
+    console.log("No inventory found.");
+    return;
+  }
+
+  const TOTAL_LOGS = 1000000;
+
+  for (let i = 0; i < TOTAL_LOGS; i += BATCH_SIZE) {
+    const logs = [];
+
+    const limit = Math.min(
+      BATCH_SIZE,
+      TOTAL_LOGS - i
+    );
+
+    for (let j = 0; j < limit; j++) {
+      const inventory =
+        inventories[
+        Math.floor(
+          Math.random() * inventories.length
+        )
+        ];
+
+      const previousStock = faker.number.int({
+        min: 0,
+        max: 500,
+      });
+
+      const quantity = faker.number.int({
+        min: 1,
+        max: 20,
+      });
+
+      const type = faker.helpers.arrayElement(
+        Object.values(InventoryLogType)
+      );
+
+      let newStock = previousStock;
+
+      switch (type) {
+        case InventoryLogType.ORDER:
+          newStock = Math.max(
+            previousStock - quantity,
+            0
+          );
+          break;
+
+        case InventoryLogType.RESTOCK:
+        case InventoryLogType.RETURN:
+          newStock = previousStock + quantity;
+          break;
+
+        case InventoryLogType.CANCEL:
+          newStock = previousStock + quantity;
+          break;
+
+        default:
+          newStock = faker.number.int({
+            min: 0,
+            max: 500,
+          });
+      }
+
+      logs.push({
+        inventoryId: inventory._id,
+
+        productId: inventory.productId,
+
+        type,
+
+        quantity,
+
+        previousStock,
+
+        newStock,
+
+        reason: faker.lorem.sentence(),
+
+        createdBy:
+          users[
+            Math.floor(
+              Math.random() * users.length
+            )
+          ]?._id,
+      });
+    }
+
+    await inventorylogModel.insertMany(logs, {
+      ordered: false,
+    });
+
+    console.log(
+      `Inventory Logs: ${i + limit}/${TOTAL_LOGS}`
+    );
+  }
+
+  console.log("Inventory Logs Seeded Successfully");
+}
+
 // async function run() {
 //   try {
 //     await connectDB();
@@ -481,6 +670,8 @@ async function seedCoupons() {
 
 import readline from "readline";
 import Coupon from "../models/coupan.model";
+import inventoryModel, { InventoryStatus } from "../models/inventory.model";
+import inventorylogModel, { InventoryLogType } from "../models/inventorylog.model";
 
 
 const rl = readline.createInterface({
@@ -520,7 +711,9 @@ async function runSeeder() {
 5. Orders
 6. Reviews
 7. coupons
-8. All
+8. Inventory
+9. Inventory Logs
+10. All
 
 =============================
 `);
@@ -633,9 +826,19 @@ async function runSeeder() {
         await seedCoupons();
         break;
 
-
       case "8":
-      case "8.all":
+      case "inventory":
+        await seedInventory();
+        break;
+
+      case "9":
+      case "inventorylogs":
+      case "inventory logs":
+        await seedInventoryLogs();
+        break;
+
+      case "10":
+      case "10.all":
       case "all":
 
         await seedUsers();
@@ -645,6 +848,9 @@ async function runSeeder() {
         await seedOrders();
         await seedReviews();
         await seedCoupons()
+        await seedInventory()
+        await seedInventoryLogs()
+        
         break;
 
 

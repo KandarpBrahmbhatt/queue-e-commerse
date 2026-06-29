@@ -21,6 +21,7 @@ import dotenv from "dotenv";
 import reviewRouter from './routes/review.routes';
 import couponRouter from './routes/coupon.routes';
 import currentProfileRouter from './routes/cuurent.routes';
+import inventoryRouter from './routes/inventory.routes';
 dotenv.config();
 const app = express()
 
@@ -44,6 +45,7 @@ app.use("/api/address",addressRouter)
 app.use("/api/review",reviewRouter)
 app.use("/api/coupon",couponRouter)
 app.use("/api/profile",currentProfileRouter)
+app.use("/api/inventory",inventoryRouter)
 const port = 5000
 // app.listen(port, () => {
 //     console.log(`Server Running ${port}`);

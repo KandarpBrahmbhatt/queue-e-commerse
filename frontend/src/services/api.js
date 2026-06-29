@@ -119,6 +119,32 @@ export const api = {
         method: 'DELETE',
       }),
   },
+  inventory: {
+    getAll: (page = 1, limit = 10, search = "") =>
+      request(`/inventory/getAllInventory?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`),
+    getById: (id) => request(`/inventory/getInventoryById/${id}`),
+    create: (inventoryData) =>
+      request('/inventory/create', {
+        method: 'POST',
+        body: JSON.stringify(inventoryData),
+      }),
+    update: (id, inventoryData) =>
+      request(`/inventory/updateInventory/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(inventoryData),
+      }),
+    addStock: (id, quantity) =>
+      request(`/inventory/addStock/${id}`, {
+        method: 'POST',
+        body: JSON.stringify({ quantity }),
+      }),
+    delete: (id) =>
+      request(`/inventory/deleteInventory/${id}`, {
+        method: 'DELETE',
+      }),
+    getLowStock: () => request('/inventory/getLowStockProducts'),
+    getHistory: (id) => request(`/inventory/getInventoryHistory/${id}`),
+  },
   cart: {
     get: () => request('/cart/get'),
     add: (productId, quantity = 1) =>
