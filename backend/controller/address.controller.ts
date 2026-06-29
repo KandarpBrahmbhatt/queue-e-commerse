@@ -1,6 +1,7 @@
 import Address from "../models/address.model"
-import { Response } from 'express'
+import {Request,Response } from 'express'
 import { AuthRequest } from "../models/user.model"
+import mongoose from "mongoose"
 
 // 1. Used AuthRequest type for 'req' to access the authenticated user's ID (req.user.userId).
 // 2. Updated createAddress to save the userId and handle the default address option (clearing previous defaults if new one is default).
@@ -49,12 +50,104 @@ export const getAddress = async (req: AuthRequest, res: Response) => {
         if (!address) {
             return res.status(404).json({ message: "Address not found" })
         }
-        
+
         return res.status(200).json({ message: "gettingAddress successfully", address })
     } catch (error: any) {
         console.log(`getAddress error ${error}`)
         // Fixed: Change response status to 500 on error instead of 200
         return res.status(500).json({ message: "gettingAddress error", error: error.message })
+    }
+}
+
+export const getAddressListing = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user?.userId
+        console.log("User ID:", userId);
+        const address = await Address.aggregate([
+            {
+                $match: {
+                    userId: new mongoose.Types.ObjectId(userId)
+                },
+            },
+            {
+                $project: {
+                    _id: 1,
+                    fullName: 1,
+                    mobile: 1,
+                    addressLine1: 1,
+                    addressLine2: 1,
+                    city: 1,
+                    state: 1,
+                    pincode: 1,
+                    country: 1,
+                    isDefault: 1,
+                    createdAt: 1
+                },
+            }
+        ])
+
+        // if(address.length === 0){
+        //     return res.status(404).json({message:"Address not found"})
+        // }
+
+        return res.status(200).json({ messsage: "gettingAdderessListing successfully", address })
+    } catch (error: any) {
+        console.log("getAddressListing aggragation api error", error)
+        return res.status(500).json({ message: "getting adderessListing error", error: error.message })
+    }
+}
+
+export const getAllAddressListing = async(req:Request,res:Response)=>{
+    try {
+        console.log("before getALLAdderseeListing api")
+        const page = Number(req.query.page) || 1
+        const limit = Number(req.query.limit) || 10
+        const skip = (page - 1) * limit
+        
+        const address = await Address.aggregate([
+            {
+                $sort: {
+                    createdAt: -1
+                }
+            },
+            {
+                $skip: skip
+            },
+            {
+                $limit: limit
+            },
+            {
+                $project:{
+                    _id:1,
+                    userId:1,
+                    fullName:1,
+                    mobile:1,
+                    addressLine1:1,
+                    addressLine2:1,
+                    city:1,
+                    state:1,
+                    pincode:1,
+                    country:1,
+                    isDefault:1,
+                    createdAt:1
+                }
+            }
+        ])
+
+        const total = await Address.countDocuments()
+
+        console.log("Address count:", address.length)
+        return res.status(200).json({
+            message:"getAllAddressListing api successfully",
+            address,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+        })
+    } catch (error:any) {
+        console.log(`getAllAddressListing api error ${error}`)
+        return res.status(500).json({message:"getAllAddressListing api error",error:error.message})
     }
 }
 
@@ -100,7 +193,7 @@ export const updateAddress = async (req: AuthRequest, res: Response) => {
 export const deleteAddress = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?.userId
-        
+
         // Find and delete the address matching ID and userId to prevent deleting other users' addresses
         const address = await Address.findOneAndDelete({ _id: req.params.id, userId })
 

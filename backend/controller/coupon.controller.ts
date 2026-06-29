@@ -107,3 +107,59 @@ export const getCoupons = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+export const getAllAggregateCoupen = async (req: Request, res: Response) => {
+  try {
+
+    const page = Number(req.query.page) || 1
+    const limit = Number(req.query.page) || 10
+    const skip = (page - 1) * limit
+
+    const coupen = await Coupon.aggregate([
+      {
+        $match: {
+          isActive: true
+        }
+      }, 
+      {
+        $sort: {
+          createdAt: -1
+        }
+      },
+      {
+        $skip: skip
+      },
+      {
+        $limit: limit
+      },
+      {
+        $project: {
+          code: 1,
+          discountType: 1,
+          discountValue: 1,
+          minOrderValue: 1,
+          isActive: 1,
+          startDate: 1,
+          endDate: 1,
+          usedCount: 1,
+          usageLimit: 1,
+          expiresAt: 1
+        }
+      }
+    ])
+
+    const total = await Coupon.countDocuments()
+    return res.status(200).json({
+      message: "getAllAggragationCoupen successfully",
+      coupen,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    })
+  } catch (error: any) {
+    console.log(`getAllAggragateCoupen error ${error}`)
+    return res.status(500).json({ message: "getAllAggragateCoupen error", error: error.message })
+  }
+}

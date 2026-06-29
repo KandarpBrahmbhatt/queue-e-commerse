@@ -190,7 +190,7 @@ async function seedAddresses() {
   console.log("Address seeding completed");
 }
 
-async function seedCart(){
+async function seedCart() {
   console.log("Seeding Cart...");
 
   await Cart.deleteMany({});
@@ -314,7 +314,7 @@ async function seedOrders() {
     await Order.insertMany(orders);
     console.log(`Orders: ${i + limit}/300000`);
   }
-} 
+}
 
 async function seedReviews() {
   console.log("Seeding Reviews...");
@@ -357,6 +357,105 @@ async function seedReviews() {
   }
 }
 
+
+async function seedCoupons() {
+  console.log("Seeding Coupons...");
+  const COUPON_TOTAL = 1000000;
+  const BATCH_SIZE = 25000;
+  await Coupon.deleteMany({});
+
+  const users = await User.find().select("_id").lean();
+
+  for (let i = 0; i < COUPON_TOTAL; i += BATCH_SIZE) {
+
+    const coupons = [];
+
+    const limit = Math.min(BATCH_SIZE, COUPON_TOTAL - i);
+
+    for (let j = 0; j < limit; j++) {
+
+      const isPercentage = faker.datatype.boolean();
+
+      const assignedUsers = [];
+
+      // Randomly assign coupon to 0-5 users
+      if (users.length > 0 && faker.datatype.boolean()) {
+
+        const count = faker.number.int({ min: 1, max: 5 });
+
+        for (let k = 0; k < count; k++) {
+          assignedUsers.push(
+            users[Math.floor(Math.random() * users.length)]._id
+          );
+        }
+      }
+
+      coupons.push({
+        code: `CPN${i + j}${faker.string.alphanumeric(6).toUpperCase()}`,
+
+        discountType: isPercentage ? "percentage" : "fixed",
+
+        discountValue: isPercentage
+          ? faker.number.int({ min: 5, max: 50 })
+          : faker.number.int({ min: 50, max: 1000 }),
+
+        minOrderValue: faker.number.int({
+          min: 100,
+          max: 5000,
+        }),
+
+        isActive: faker.datatype.boolean(),
+
+        startDate: faker.date.recent(),
+
+        endDate: faker.date.future(),
+
+        usedCount: faker.number.int({
+          min: 0,
+          max: 500,
+        }),
+
+        usageLimit: faker.number.int({
+          min: 500,
+          max: 5000,
+        }),
+
+        assignedUsers,
+
+        applicableCategories: faker.helpers.arrayElements(
+          [
+            "Electronics",
+            "Fashion",
+            "Books",
+            "Mobiles",
+            "Shoes",
+            "Home",
+            "Beauty",
+            "Sports",
+          ],
+          faker.number.int({ min: 1, max: 3 })
+        ),
+
+        maxDiscountValue: isPercentage
+          ? faker.number.int({ min: 100, max: 1000 })
+          : undefined,
+
+        expiresAt: faker.date.future(),
+      });
+    }
+
+    await Coupon.insertMany(coupons, {
+      ordered: false,
+    });
+
+    console.log(
+      `Coupons: ${i + limit}/${COUPON_TOTAL}`
+    );
+  }
+
+  console.log("1 Million Coupons Seeded Successfully");
+}
+
 // async function run() {
 //   try {
 //     await connectDB();
@@ -381,6 +480,7 @@ async function seedReviews() {
 
 
 import readline from "readline";
+import Coupon from "../models/coupan.model";
 
 
 const rl = readline.createInterface({
@@ -389,10 +489,10 @@ const rl = readline.createInterface({
 });
 
 
-function askQuestion(question:string):Promise<string>{
+function askQuestion(question: string): Promise<string> {
 
-  return new Promise((resolve)=>{
-    rl.question(question,(answer)=>{
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
       resolve(answer);
     });
   });
@@ -401,9 +501,9 @@ function askQuestion(question:string):Promise<string>{
 
 
 
-async function runSeeder(){
+async function runSeeder() {
 
- try{
+  try {
 
     await connectDB();
 
@@ -419,7 +519,8 @@ async function runSeeder(){
 4. Cart
 5. Orders
 6. Reviews
-7. All
+7. coupons
+8. All
 
 =============================
 `);
@@ -482,69 +583,75 @@ async function runSeeder(){
 
     // }
 
-switch(choice.toLowerCase()){
+    switch (choice.toLowerCase()) {
 
 
-case "1":
-case "1.users":
-case "users":
-    await seedUsers();
-    break;
+      case "1":
+      case "1.users":
+      case "users":
+        await seedUsers();
+        break;
 
 
-case "2":
-case "2.products":
-case "products":
-    await seedProducts();
-    break;
+      case "2":
+      case "2.products":
+      case "products":
+        await seedProducts();
+        break;
 
 
-case "3":
-case "3.addresses":
-case "addresses":
-    await seedAddresses();
-    break;
+      case "3":
+      case "3.addresses":
+      case "addresses":
+        await seedAddresses();
+        break;
 
 
-case "4":
-case "4.cart":
-case "cart":
-    await seedCart();
-    break;
+      case "4":
+      case "4.cart":
+      case "cart":
+        await seedCart();
+        break;
 
 
-case "5":
-case "5.orders":
-case "orders":
-    await seedOrders();
-    break;
+      case "5":
+      case "5.orders":
+      case "orders":
+        await seedOrders();
+        break;
 
 
-case "6":
-case "6.reviews":
-case "reviews":
-    await seedReviews();
-    break;
+      case "6":
+      case "6.reviews":
+      case "reviews":
+        await seedReviews();
+        break;
+
+      case "7":
+      case "7.coupons":
+      case "coupons":
+        await seedCoupons();
+        break;
 
 
-case "7":
-case "7.all":
-case "all":
+      case "8":
+      case "8.all":
+      case "all":
 
-    await seedUsers();
-    await seedProducts();
-    await seedAddresses();
-    await seedCart();
-    await seedOrders();
-    await seedReviews();
+        await seedUsers();
+        await seedProducts();
+        await seedAddresses();
+        await seedCart();
+        await seedOrders();
+        await seedReviews();
+        await seedCoupons()
+        break;
 
-    break;
 
+      default:
+        console.log("Invalid Choice");
 
-default:
-    console.log("Invalid Choice");
-
-}
+    }
     console.log(
       "Seeder completed successfully"
     );
@@ -555,7 +662,7 @@ default:
     process.exit(0);
 
 
- }catch(error){
+  } catch (error) {
 
     console.log(error);
 
@@ -563,7 +670,7 @@ default:
 
     process.exit(1);
 
- }
+  }
 
 }
 

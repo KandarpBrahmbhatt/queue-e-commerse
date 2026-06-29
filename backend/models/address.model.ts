@@ -1,11 +1,10 @@
-import mongoose, { mongo } from "mongoose";
+import mongoose from "mongoose";
 
 const addressSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-    //   required: true,
     },
     fullName: {
       type: String,
@@ -45,6 +44,9 @@ const addressSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+addressSchema.index({ userId: 1 });
+addressSchema.index({ createdAt: -1 });
 
 const Address = mongoose.model("Address",addressSchema)
 
