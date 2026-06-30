@@ -10,8 +10,11 @@ export const isAuth = async(req:AuthRequest,res:Response,next:NextFunction)=>{
             return res.status(400).json({message:"not Authenticated unauthorized - Token missing"})
         }
 
-        const decoded = jwt.verify(token,process.env.JWT_SECRET!) as{userId:string,role:string}
-        req.user = decoded
+        // const decoded = jwt.verify(token,process.env.JWT_SECRET!) as{userId:string}
+        // req.user = decoded
+           const decoded = jwt.verify(token,process.env.JWT_SECRET!) as AuthRequest["user"];
+           req.user = decoded;
+
         next()
     } catch (error) {
         console.log("isAuth error",error)

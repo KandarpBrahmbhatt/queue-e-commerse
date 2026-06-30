@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Star, ShoppingCart } from 'lucide-react';
 
-export default function ProductCard({ product, onAddToCart, user }) {
+export default function ProductCard({ product, onAddToCart, user, onViewReviews, onOpenDetail }) {
   const [imageError, setImageError] = useState(false);
   const [adding, setAdding] = useState(false);
 
@@ -25,9 +25,17 @@ export default function ProductCard({ product, onAddToCart, user }) {
     return `linear-gradient(135deg, #${hex} 0%, #e0e0e0 100%)`;
   };
 
+  const avgRating = product.ratingsAverage !== undefined ? product.ratingsAverage : (product.averageRating || 0);
+  const reviewsCount = product.ratingsQuantity !== undefined ? product.ratingsQuantity : (product.totalReviews || 0);
+
   return (
     <div className={`product-card glass-panel ${isOutOfStock ? 'out-of-stock' : ''}`}>
-      <div className="product-image-container">
+      <div 
+        className="product-image-container"
+        onClick={() => onOpenDetail && onOpenDetail(product._id)}
+        style={{ cursor: 'pointer' }}
+        title="View details"
+      >
         {imageError ? (
           <div 
             className="product-image-fallback" 
@@ -47,14 +55,34 @@ export default function ProductCard({ product, onAddToCart, user }) {
       </div>
 
       <div className="product-info">
-        <h3 className="product-title" title={product.name}>{product.name}</h3>
+        <h3 
+          className="product-title" 
+          title={product.name}
+          onClick={() => onOpenDetail && onOpenDetail(product._id)}
+          style={{ cursor: 'pointer' }}
+        >
+          {product.name}
+        </h3>
         
         <div className="product-rating-row">
-          <div className="product-rating">
-            <span>{product.averageRating?.toFixed(1) || '4.1'}</span>
+          <div 
+            className="product-rating" 
+            onClick={() => onViewReviews && onViewReviews(product._id, product.name)}
+            style={{ cursor: 'pointer' }}
+            title="View product reviews"
+          >
+            <span>{avgRating.toFixed(1)}</span>
             <Star size={10} className="star-icon" />
           </div>
-          <span className="product-sku">{product.sku}</span>
+          <span 
+            className="product-reviews-count"
+            onClick={() => onViewReviews && onViewReviews(product._id, product.name)}
+            style={{ cursor: 'pointer', fontSize: '0.75rem', color: '#a78bfa', fontWeight: '600' }}
+            title="View product reviews"
+          >
+            ({reviewsCount} reviews)
+          </span>
+          <span className="product-sku" style={{ marginLeft: 'auto' }}>{product.sku}</span>
         </div>
 
         <p className="product-desc" title={product.description}>{product.description}</p>

@@ -1,13 +1,16 @@
 import { Request, Response } from 'express'
-import Order from '../models/order.model'
+import Order, { OrderStatus, ReplacementStatus, ReturnStatus } from '../models/order.model'
 import { Cart } from '../models/card.model'
 import User, { AuthRequest } from '../models/user.model'
+import Coupon from '../models/coupan.model'
 import { orderEmailQueue } from '../queue/order.queue'
 import mongoose from 'mongoose'
+import { notificationQueue } from '../queue/notification.queue'
 
 export const createOrder = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?.userId
+        const { shippingAddress, paymentMethod, couponCode } = req.body // Extracted from request body (added by AI assistant)
 
         // const cart = await Cart.findOne({ userId })
         const cart = await Cart.findOne({ user: userId })
@@ -15,20 +18,56 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ message: "cart is empty " })
         }
 
-        let totalAmount = 0
+        let subtotal = 0
 
         for (const item of cart.items) {
-            totalAmount += item.price * item.quantity
+            subtotal += item.price * item.quantity
+        }
+
+        let discountAmount = 0;
+        let totalAmount = subtotal;
+
+        if (couponCode) {
+            const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
+            if (coupon) {
+                if (subtotal >= coupon.minOrderValue) {
+                    if (coupon.discountType === "percentage") {
+                        discountAmount = (subtotal * coupon.discountValue) / 100;
+                    } else {
+                        discountAmount = coupon.discountValue;
+                    }
+                    discountAmount = Math.min(discountAmount, subtotal);
+                    totalAmount = subtotal - discountAmount;
+                }
+            }
         }
 
         const orderNumber = `ORD-${Date.now()}`;
 
+        // Map incoming frontend address properties (mobile, pincode) to match the Order schema (phoneNumber, postalCode)
+        let mappedAddress = undefined
+        if (shippingAddress) {
+            mappedAddress = {
+                fullName: shippingAddress.fullName,
+                phoneNumber: shippingAddress.phoneNumber || shippingAddress.mobile,
+                addressLine1: shippingAddress.addressLine1,
+                addressLine2: shippingAddress.addressLine2,
+                city: shippingAddress.city,
+                state: shippingAddress.state,
+                postalCode: shippingAddress.postalCode || shippingAddress.pincode,
+                country: shippingAddress.country || 'India'
+            }
+        }
 
         const order = await Order.create({
             user: userId,
             items: cart.items,
+            subtotal: subtotal,
+            discountAmount: discountAmount,
             totalAmount: totalAmount,
-            orderNumber
+            orderNumber,
+            shippingAddress: mappedAddress, // Saved shipping address (added by AI assistant)
+            paymentMethod: paymentMethod || 'CARD' // Saved payment method or default (added by AI assistant)
         })
 
         cart.items = []
@@ -78,6 +117,15 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
         console.log("User Email:", user.email);
 
         console.log("User Name:", user.name);
+
+        await notificationQueue.add("notification", {
+            email: user.email,
+            phone: user.phone,
+            subject: "Order Created",
+            html: `<h1>Order Created</h1><p>Hi ${user.name}, your order #${order.orderNumber} has been created successfully. Total: ₹${order.totalAmount}.</p>`,
+            sms: `Hi ${user.name}, your order #${order.orderNumber} has been created successfully. Total: ₹${order.totalAmount}.`
+        });
+
         return res.status(201).json({ message: "Order created", order })
     } catch (error) {
         console.log(`create order error ${error}`)
@@ -95,6 +143,7 @@ export const getOrder = async (req: Request, res: Response) => {
         const skip = ((page - 1) * limit)
 
         const order = await Order.find()
+            .populate("user", "name email")
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: -1 })
@@ -125,6 +174,151 @@ export const getCuurentUserOrder = async (req: AuthRequest, res: Response) => {
         return res.status(500).json({ message: "getCurrentUserOrder successfully", error })
     }
 }
+
+
+export const cancelOrder = async (req: AuthRequest, res: Response) => {
+    try {
+        const { orderId } = req.params
+
+        if (!orderId) {
+            return res.status(400).json({ message: "order not found invalid orderId" })
+        }
+
+        const order = await Order.findById(orderId)
+
+        if (!order) {
+            return res.status(400).json({ message: "order not found" })
+        }
+
+        // Customer can cancel only their own order
+        if (order.user.toString() !== req.user?.userId) {
+            return res.status(403).json({ message: "Unauthorized" })
+        }
+
+        // Already cancelled
+        if (order.orderStatus === "CANCELLED") {
+            return res.status(400).json({ message: "orderCanceled already cancelled" })
+        }
+
+        //  Cannot cancel after shipping
+
+        const blockStatus = [
+            "SHIPPED",
+            "DELIVERD",
+        ]
+
+        if (blockStatus.includes(order.orderStatus)) {
+            return res.status(400).json({ message: "order cannot be cancelled now" })
+        }
+
+        const orderTime = new Date(order.createdAt).getTime()
+        const now = Date.now()
+
+        const DiffMinutes = (now - orderTime) / (1000 * 60)
+        //  order can cancel 30 minute after than order can not ableto cancel
+        if (DiffMinutes > 30) {
+            return res.status(400).json({ message: "Canecelltion time expire" })
+        }
+
+        order.orderStatus = OrderStatus.CANCELLED;
+        await order.save()
+
+        const userObj = await User.findById(order.user);
+        if (!userObj) {
+            return res.status(400).json({ message: "user not found" })
+        }
+
+        await notificationQueue.add("notification", {
+            email: userObj.email,
+            phone: userObj.phone,
+            subject: "Order cancelled successfully",
+            html: `<h1>Order Cancelled</h1><p>Hi ${userObj.name}, your order #${order.orderNumber} has been cancelled successfully.</p>`,
+            sms: `Hi ${userObj.name}, your order #${order.orderNumber} has been cancelled successfully.`
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Order cancelled successfully",
+            data: order,
+        });
+    } catch (error) {
+        console.log(`cancelOrder error ${error}`)
+        return res.status(500).json({ message: "Order cancelled error" });
+    }
+}
+
+export const requestReturn = async (req: AuthRequest, res: Response) => {
+    try {
+        const { orderId } = req.params
+        const { reason } = req.body
+
+        const order = await Order.findById(orderId)
+
+        if (!order) {
+            return res.status(400).json({ message: "order not found" })
+        }
+
+        if (order.orderStatus !== OrderStatus.DELIVERD) {
+            return res.status(400).json({ message: "Only delivery order can be returned" })
+        }
+
+        const diffDays = (Date.now() - new Date(order.deliveredAt!).getTime()) / (1000 * 60 * 60 * 24);
+
+        if (diffDays > 7) {
+            return res.status(400).json({ message: "Return window expired (7 days)" });
+        }
+
+        order.returnStatus = ReturnStatus.REQUESTED
+        order.returnReason = reason
+
+        await order.save()
+
+        return res.status(200).json({ message: "requestResturn successfully", order })
+    } catch (error: any) {
+        console.log(`requestReturn error ${error}`)
+        return res.status(500).json({ message: "requestResturn error", error: error.message })
+
+    }
+}
+
+export const requestReplacement = async (req: AuthRequest, res: Response) => {
+    try {
+        const { orderId } = req.params;
+        const { reason } = req.body;
+        // const userId = req.user?.userId;
+
+        const order = await Order.findById(orderId);
+
+        if (!order) return res.status(404).json({ message: "Order not found" });
+
+        // if (order.user.toString() !== userId)
+        //     return res.status(403).json({ message: "Unauthorized" });
+
+        if (order.orderStatus !== OrderStatus.DELIVERD) {
+            return res.status(400).json({ message: "Only delivered orders can be replaced" });
+        }
+
+        const diffDays = (Date.now() - new Date(order.deliveredAt!).getTime()) / (1000 * 60 * 60 * 24);
+
+        if (diffDays > 7) {
+            return res.status(400).json({ message: "Replacement window expired" });
+        }
+
+        order.replacementStatus = ReplacementStatus.REQUESTED;
+        order.replacementRequestedAt = new Date();
+        order.replacementReason = reason;
+
+        await order.save();
+
+        return res.json({
+            success: true,
+            message: "Replacement request submitted"
+        });
+
+    } catch (error) {
+        return res.status(500).json({ message: "Server error", error });
+    }
+};
 
 export const getaggragationOrder = async (req: AuthRequest, res: Response) => {
     try {
@@ -192,4 +386,72 @@ export const getaggragationOrder = async (req: AuthRequest, res: Response) => {
     }
 };
 
+// apprve admin system
 
+export const approveReturn = async (req: AuthRequest, res: Response) => {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) return res.status(404).json({ message: "Not found" });
+
+    order.returnStatus = ReturnStatus.APPROVED;
+
+    await order.save();
+
+    return res.json({ message: "Return approved" });
+};
+
+
+//admin
+export const markAsShipped = async (req: Request, res: Response) => {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+    }
+
+    order.orderStatus = OrderStatus.SHIPPED;
+    order.shippedAt = new Date();
+
+    await order.save();
+
+    return res.json({
+        message: "Order marked as shipped",
+        order,
+    });
+};
+
+//admin
+export const markAsDelivered = async (req: Request, res: Response) => {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+    }
+
+    order.orderStatus = OrderStatus.DELIVERD;
+    order.deliveredAt = new Date();
+
+    await order.save();
+
+    const userObj = await User.findById(order.user);
+    if (userObj) {
+        await notificationQueue.add("notification", {
+            email: userObj.email,
+            phone: userObj.phone,
+            subject: "Order Delivered",
+            html: `<h1>Order Delivered</h1><p>Hi ${userObj.name}, your order #${order.orderNumber} has been delivered successfully.</p>`,
+            sms: `Hi ${userObj.name}, your order #${order.orderNumber} has been delivered successfully. Thank you for shopping with us!`
+        });
+    }
+
+    return res.json({
+        message: "Order delivered successfully",
+        order,
+    });
+};

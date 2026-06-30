@@ -1,16 +1,29 @@
-import mongoose from "mongoose";
+// models/role.model.ts
+import mongoose, { Schema, Document } from "mongoose";
+import "./permission.model";
 
-const roleSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        enum: ["USER", "ADMIN", "MANAGER", "SELLER"],
-        default: "USER",
-        unique: true
+export interface IRole extends Document {
+    name: string;
+    permissions: Schema.Types.ObjectId[];
+}
+
+const roleSchema = new Schema<IRole>(
+    {
+        name: {
+            type: String,
+            required: true,
+            unique: true,
+            uppercase: true
+        },
+
+        permissions: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "Permission"
+            }
+        ]
     },
-    permissions: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Permission"
-    }]
-}, { timestamps: true });
+    { timestamps: true }
+);
 
-export default mongoose.model("Role", roleSchema);
+export default mongoose.model<IRole>("Role", roleSchema);

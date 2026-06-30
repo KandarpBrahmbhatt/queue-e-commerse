@@ -117,25 +117,41 @@ export const sendOTP = async (to: string, otp: string) => {
 };
 
 
+export const sendCartAddedEmail =async(email:string,name:string,productName:string,quantity:Number) =>{
+    await transporter.sendMail({
+        from:process.env.EMAIL_USER,
+        to:email,
+        subject:"Product Added to a Cart",
+        html:`
 
-export const sendDiscountEmail = async (email: string, name: string) => {
-    try {
-        console.log(` Sending discount email to ${email}`);
+        <h2> Hello ${name} </h2>
+        <p> Your peoduct added successfully added to your cart </p>
 
-        await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: email,
-            subject: " 50% Discount Offer!",
-            html: `
-                <h2>Hello ${name},</h2>
-                <p> You got a 50% discount offer!</p>
-                <p>Shop now before it expires.</p>
-            `
-        });
+        <table border="1" cellpedding ="8>
+        <tr>
+        <th>Product<th/>
+        <th>Quanitity</th>
 
-        console.log(`Email sent to ${email}`);
+        </tr>
 
-    } catch (error) {
-        console.log(" Email send error:", error);
-    }
+        <tr>
+        <td>${productName}</td>
+        <td>${quantity} </td>
+        </tr>
+        </table>
+
+        <br/>
+
+        <p>Thank you for shopping wiht use </p>
+        `
+    })
+}
+
+export const sendEmail = async (to: string, subject: string, html: string) => {
+    await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to,
+        subject,
+        html,
+    });
 };

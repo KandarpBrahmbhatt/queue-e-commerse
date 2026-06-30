@@ -1,10 +1,12 @@
 import { Request, Response } from "express"
 import { AuthRequest } from '../models/user.model'
-import Order from "../models/order.model"
+import Order, { OrderStatus, PaymentStatus } from "../models/order.model"
 import stripe from "../config/stripe"
 import Stripe from "stripe"
 import Payment from "../models/payment.model"
 import { invoiceQueue } from "../queue/invoice.queue"
+import User from "../models/user.model"
+import { notificationQueue } from "../queue/notification.queue"
 export const createPayment = async (req: Request, res: Response) => {
     try {
         // const userId = req.user?.userId
@@ -120,24 +122,33 @@ export const stripeWebhook = async (
                 });
 
                 // Update the order status to "CONFIRM" to match the OrderStatus enum defined in order.model.ts.
-                const updatedOrder = await Order.findByIdAndUpdate(
-                    orderId,
-                    {
-                        paymentStatus: "PAID",
-                        orderStatus: "CONFIRM",
-                    },
-                    { new: true }
-                );
+                const updatedOrder = await Order.findById(orderId);
+                if (updatedOrder && updatedOrder.orderStatus !== OrderStatus.CONFIRM) {
+                    updatedOrder.paymentStatus = PaymentStatus.PAID;
+                    updatedOrder.orderStatus = OrderStatus.CONFIRM;
+                    await updatedOrder.save();
 
-                console.log("Updated Order:", updatedOrder);
+                    console.log("Updated Order:", updatedOrder);
 
-                console.log("Adding invoice job")
-                
-                await invoiceQueue.add("send-invoice", {
-                    orderId,
-                    userId,
-                });
-                console.log("email job added")
+                    const userObj = await User.findById(userId);
+                    if (userObj) {
+                        await notificationQueue.add("notification", {
+                            email: userObj.email,
+                            phone: userObj.phone,
+                            subject: "Order Confirmed",
+                            html: `<h1>Order Confirmed</h1><p>Hi ${userObj.name}, your payment is successful, and your order ${updatedOrder.orderNumber} is confirmed.</p>`,
+                            sms: `Hi ${userObj.name}, your order ${updatedOrder.orderNumber} has been confirmed. Thank you!`
+                        });
+                    }
+
+                    console.log("Adding invoice job")
+                    
+                    await invoiceQueue.add("send-invoice", {
+                        orderId,
+                        userId,
+                    });
+                    console.log("email job added")
+                }
 
                 break;
             }
@@ -169,17 +180,25 @@ export const stripeWebhook = async (
                 }
 
                 if (orderId) {
-                    // Update the order status to "CONFIRM" to match the OrderStatus enum defined in order.model.ts.
-                    const updatedOrder = await Order.findByIdAndUpdate(
-                        orderId,
-                        {
-                            paymentStatus: "PAID",
-                            orderStatus: "CONFIRM",
-                        },
-                        { new: true }
-                    );
+                    const updatedOrder = await Order.findById(orderId);
+                    if (updatedOrder && updatedOrder.orderStatus !== OrderStatus.CONFIRM) {
+                        updatedOrder.paymentStatus = PaymentStatus.PAID;
+                        updatedOrder.orderStatus = OrderStatus.CONFIRM;
+                        await updatedOrder.save();
 
-                    console.log("Updated Order via PaymentIntent:", updatedOrder);
+                        console.log("Updated Order via PaymentIntent:", updatedOrder);
+
+                        const userObj = await User.findById(userId);
+                        if (userObj) {
+                            await notificationQueue.add("notification", {
+                                email: userObj.email,
+                                phone: userObj.phone,
+                                subject: "Order Confirmed",
+                                html: `<h1>Order Confirmed</h1><p>Hi ${userObj.name}, your payment is successful, and your order ${updatedOrder.orderNumber} is confirmed.</p>`,
+                                sms: `Hi ${userObj.name}, your order ${updatedOrder.orderNumber} has been confirmed. Thank you!`
+                            });
+                        }
+                    }
                 }
 
                 break;

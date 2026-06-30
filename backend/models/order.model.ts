@@ -1,28 +1,48 @@
 import mongoose, { Schema, Types } from 'mongoose'
 
-export enum OrderStatus{
+export enum OrderStatus {
     PENDING = "PENDING",
-    CONFIRM="CONFIRM",
-    PROCESSED="PROCESSED",
-    SHIPPED="SHIPPED",
-    DELIVERD="DELIVERD",
-    CANCELLED="CANCELLED",
-    RETURN="RETURNED"
+    CONFIRM = "CONFIRM",
+    PROCESSED = "PROCESSED",
+    SHIPPED = "SHIPPED",
+    DELIVERD = "DELIVERD",
+    CANCELLED = "CANCELLED",
+    RETURN = "RETURNED"
 }
 
-export enum PaymentStatus{
+export enum PaymentStatus {
     PENDING = "PENDING",
-    PAID="PAID",
-    FAILED="FAILED",
-    REFUNDED="REFUNDED"
+    PAID = "PAID",
+    FAILED = "FAILED",
+    REFUNDED = "REFUNDED"
 }
 
 export enum PaymentMethod {
-    COD="COD",
-    CARD="CARD",
-    UPI="UPI",
-    NET_BANKING="NET_BANKING",
+    COD = "COD",
+    CARD = "CARD",
+    UPI = "UPI",
+    NET_BANKING = "NET_BANKING",
     WALLET = "WALLET"
+}
+
+export enum ReturnStatus {
+    NONE = "NONE",
+    REQUESTED = "REQUESTED",
+    APPROVED = "APPROVED",
+    REJECTED = "REJECTED",
+    PICKED = "PICKED",
+    REFUNDED = "REFUNDED",
+    COMPLETED = "COMPLETED"
+}
+
+export enum ReplacementStatus {
+    NONE = "NONE",
+    REQUESTED = "REQUESTED",
+    APPROVED = "APPROVED",
+    REJECTED = "REJECTED",
+    SHIPPED = "SHIPPED",
+    DELIVERED = "DELIVERED",
+    COMPLETED = "COMPLETED"
 }
 
 export interface IOrderItem {
@@ -90,6 +110,8 @@ export interface IOrder extends Document {
 
     notes?: string;
 
+    shippedAt?: Date
+
     deliveredAt?: Date;
 
     cancelledAt?: Date;
@@ -97,6 +119,22 @@ export interface IOrder extends Document {
     createdAt: Date;
 
     updatedAt: Date;
+
+    deliveryPerson: Types.ObjectId;
+
+    returnStatus: string;
+
+    replacementStatus: string;
+
+    returnRequestedAt: Date,
+    returnReason: String,
+
+    replacementRequestedAt: Date,
+    replacementReason: String,
+    trackingHistory: Array<{
+        status: string;
+        updatedAt: Date;
+    }>;
 }
 
 
@@ -105,7 +143,7 @@ const OrderItemSchema = new Schema<IOrderItem>(
         product: {
             type: Schema.Types.ObjectId,
             ref: "Product",
-            
+
         },
 
         name: {
@@ -125,7 +163,7 @@ const OrderItemSchema = new Schema<IOrderItem>(
 
         quantity: {
             type: Number,
-            
+
             min: 1,
         },
 
@@ -148,18 +186,18 @@ const ShippingAddressSchema = new Schema<IShippingAddress>(
     {
         fullName: {
             type: String,
-            
+
             trim: true,
         },
 
         phoneNumber: {
             type: String,
-            
+
         },
 
         addressLine1: {
             type: String,
-                
+
             trim: true,
         },
 
@@ -170,22 +208,22 @@ const ShippingAddressSchema = new Schema<IShippingAddress>(
 
         city: {
             type: String,
-            
+
         },
 
         state: {
             type: String,
-            
+
         },
 
         postalCode: {
             type: String,
-            
+
         },
 
         country: {
             type: String,
-            
+
             default: "India",
         },
     },
@@ -198,20 +236,19 @@ const OrderSchema = new Schema<IOrder>(
         user: {
             type: Schema.Types.ObjectId,
             ref: "User",
-            
-            index: true,
+
+            // index: true,
         },
 
         orderNumber: {
             type: String,
-            
-            unique: true,
-            index: true,
+
+            // unique: true,
         },
 
         items: {
             type: [OrderItemSchema],
-            
+
             validate: {
                 validator: (items: IOrderItem[]) => items.length > 0,
                 message: "Order must contain at least one item",
@@ -220,13 +257,13 @@ const OrderSchema = new Schema<IOrder>(
 
         shippingAddress: {
             type: ShippingAddressSchema,
-            
+
         },
 
         paymentMethod: {
             type: String,
             enum: Object.values(PaymentMethod),
-            
+
         },
 
         paymentStatus: {
@@ -249,12 +286,12 @@ const OrderSchema = new Schema<IOrder>(
             type: String,
             enum: Object.values(OrderStatus),
             default: OrderStatus.PENDING,
-            index: true,
+            // index: true,
         },
 
         subtotal: {
             type: Number,
-            
+
             min: 0,
         },
 
@@ -278,13 +315,17 @@ const OrderSchema = new Schema<IOrder>(
 
         totalAmount: {
             type: Number,
-            
+
             min: 0,
         },
 
         notes: {
             type: String,
             maxlength: 500,
+        },
+
+        shippedAt: {
+            type: Date,
         },
 
         deliveredAt: {
@@ -294,6 +335,34 @@ const OrderSchema = new Schema<IOrder>(
         cancelledAt: {
             type: Date,
         },
+        deliveryPerson: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+        },
+        trackingHistory: [
+            {
+                status: String,
+                updatedAt: Date,
+                // location?: String 
+            }
+        ],
+        returnStatus: {
+            type: String,
+            enum: Object.values(ReturnStatus),
+            default: ReturnStatus.NONE
+        },
+
+        replacementStatus: {
+            type: String,
+            enum: Object.values(ReplacementStatus),
+            default: ReplacementStatus.NONE
+        },
+
+        returnRequestedAt: Date,
+        returnReason: String,
+
+        replacementRequestedAt: Date,
+        replacementReason: String,
     },
     {
         timestamps: true,

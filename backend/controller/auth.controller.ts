@@ -1,15 +1,15 @@
 import { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import User from '../models/user.model'
+import Role from '../models/role.model'
 import genToken from '../config/token'
 import { emailQueue } from '../queue/email.queue'
 import { sendOTP } from '../services/email.service'
-import roleModel from '../models/role.model'
-import { encryptData } from '../utils/AES'
+import { notificationQueue } from '../queue/notification.queue'
 
 export const signup = async (req: Request, res: Response) => {
     try {
-        const { name, email, password } = req.body
+        const { name, email, password, phone } = req.body
         console.log(req.body)
 
         if (!name || !email || !password) {
@@ -24,29 +24,35 @@ export const signup = async (req: Request, res: Response) => {
 
         const hashPassword = await bcrypt.hash(password, 10)
 
-        const role = await roleModel.findOne({ name: "USER" });
+        const customerRole = await Role.findOne({
+            name: "CUSTOMER"
+        }).populate("permissions");
+
         const user = await User.create({
             name,
-            email:encryptData(email),
+            email,
             password: hashPassword,
-            role: role?._id
+            phone,
+            role: customerRole?._id
         });
 
-        // Populate the role and its nested permissions so they are available in genToken(user)
-        await user.populate({
-            path: "role",
-            populate: {
-                path: "permissions"
-            }
-        });
+        // Populate user role and permissions for token generation
+        if (customerRole) {
+            await user.populate({
+                path: "role",
+                populate: {
+                    path: "permissions"
+                }
+            });
+        }
 
-        //producer
-        await emailQueue.add("welcome-email", {
+        //producer welcome email + SMS enqueuing
+        await notificationQueue.add("notification", {
             email: user.email,
-            name: user.name,
-            to: email,
-            subject: "Welcome",
-            message: "Welcome to our application"
+            phone: user.phone,
+            subject: "Welcome to Queue E-Commerce",
+            html: `<h1>Welcome to Queue E-Commerce!</h1><p>Hi ${user.name}, thank you for registering with us.</p>`,
+            sms: `Hi ${user.name}, welcome to Queue E-Commerce! Thank you for registering.`
         });
 
         // Retry Mechanism =>BullMQ supports retries automatically.
@@ -108,9 +114,9 @@ export const signup = async (req: Request, res: Response) => {
             maxAge: 7 * 24 * 60 * 60 * 1000,
         })
         return res.status(200).json({ message: "signup successfully", user, AccessToken, RefreshToken })
-    } catch (error: any) {
+    } catch (error:any) {
         console.log("signup error", error)
-        return res.status(500).json({ messsage: "signup error", error: error.message })
+        return res.status(500).json({ messsage: "signup error", error:error.message })
     }
 }
 
@@ -124,10 +130,7 @@ export const login = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "all filed are required" })
         }
 
-        // const user = await User.findOne({ email }) 
-
-        const user = await User.findOne({ email })
-            .populate({
+        const user = await User.findOne({ email }) .populate({
                 path: "role",
                 populate: {
                     path: "permissions"
@@ -143,11 +146,14 @@ export const login = async (req: Request, res: Response) => {
         }
         const { AccessToken, RefreshToken } = genToken(user)
 
-        // producet
-        // await loginQueue.add("login-alert", {
-        //     email: user.email,
-        //     ip: req.ip,
-        // });
+        // enqueues login email and SMS
+        await notificationQueue.add("notification", {
+            email: user.email,
+            phone: user.phone,
+            subject: "Login Alert",
+            html: `<h1>Login Alert</h1><p>Hi ${user.name}, you have successfully logged in to your account.</p>`,
+            sms: `Hi ${user.name}, you have successfully logged in to your Queue E-Commerce account.`
+        });
         res.cookie("AccessToken", AccessToken,
             {
                 httpOnly: true,
@@ -293,3 +299,6 @@ export const resetPassword = async (req: Request, res: Response) => {
         return res.status(500).json({ message: `Reset Password error ${error}` })
     }
 }
+
+
+

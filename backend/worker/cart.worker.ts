@@ -7,7 +7,7 @@ import connectdb from "../config/db";
 import { Cart } from "../models/card.model";
 
 console.log(
-    "🚀 Cart Worker Started"
+    "Cart Worker Started"
 );
 
 // Establish database connection
@@ -15,13 +15,9 @@ connectdb();
 
 new Worker("cartQueue",
     async (job) => {
-        console.log(
-            `Processing Job ${job.id}`
-        );
+        console.log(`Processing Job ${job.id}`);
 
-        if (
-            job.name === "abandoned-cart"
-        ) {
+        if (job.name === "abandoned-cart") {
             const { userId, email } = job.data;
 
             try {
@@ -30,9 +26,7 @@ new Worker("cartQueue",
 
                 // Only send the email if the cart exists and has items
                 if (cart && cart.items && cart.items.length > 0) {
-                    await sendAbandonedCartEmail(
-                        email
-                    );
+                    await sendAbandonedCartEmail(email);
                 } else {
                     console.log(`Cart is empty or not found for user ${userId}. Skipping email.`);
                 }
@@ -42,9 +36,7 @@ new Worker("cartQueue",
             }
         }
 
-        console.log(
-            `Job ${job.id} completed`
-        );
+        console.log(`Job ${job.id} completed`);
     },
     {
         connection : connection as any,

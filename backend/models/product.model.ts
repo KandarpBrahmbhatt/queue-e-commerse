@@ -23,8 +23,11 @@ export interface IProduct extends Document {
     stock: number;
     sold: number;
 
-    category: mongoose.Types.ObjectId;
+    // category: mongoose.Types.ObjectId;
+    category: string
+
     images: string[];
+
 
     status: ProductStatus;
 
@@ -35,6 +38,8 @@ export interface IProduct extends Document {
 
     createdAt: Date;
     updatedAt: Date;
+    ratingsAverage:number,
+    ratingsQuantity:number
 }
 
 const productSchema = new Schema<IProduct>(
@@ -49,7 +54,7 @@ const productSchema = new Schema<IProduct>(
         slug: {
             type: String,
             required: true,
-            unique: true,
+            // unique: true,
             lowercase: true,
             trim: true,
         },
@@ -67,7 +72,7 @@ const productSchema = new Schema<IProduct>(
         sku: {
             type: String,
             required: true,
-            unique: true,
+            // unique: true,
             uppercase: true,
             trim: true,
         },
@@ -102,9 +107,10 @@ const productSchema = new Schema<IProduct>(
         },
 
         category: {
-            type: Schema.Types.ObjectId,
-            ref: "Category",
-            required: true,
+            type: String
+            // type: Schema.Types.ObjectId,
+            // ref: "Category",
+            // required: true,
         },
 
         images: {
@@ -134,24 +140,33 @@ const productSchema = new Schema<IProduct>(
             type: Boolean,
             default: false,
         },
+        ratingsAverage: {
+            type: Number,
+            default: 0,
+        },
+
+        ratingsQuantity: {
+            type: Number,
+            default: 0,
+        },
     },
     {
         timestamps: true,
     }
 );
 
-productSchema.index({name:"text",description:"text"})
+productSchema.index({ name: "text", description: "text" })
 
-productSchema.index({slug:1})
+productSchema.index({ slug: 1 })
 
-productSchema.index({sku:1})
+productSchema.index({ sku: 1 })
 
-productSchema.index({category:1})
+productSchema.index({ category: 1 })
 
-productSchema.index({status:1})
+productSchema.index({ status: 1 })
 
-productSchema.index({isDeleted:1})
+productSchema.index({ isDeleted: 1 })
 
-const Product = mongoose.model<IProduct>("Product",productSchema)
+const Product = mongoose.model<IProduct>("Product", productSchema)
 
 export default Product
