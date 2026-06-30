@@ -5,10 +5,11 @@ import Role from '../models/role.model'
 import genToken from '../config/token'
 import { emailQueue } from '../queue/email.queue'
 import { sendOTP } from '../services/email.service'
+import { notificationQueue } from '../queue/notification.queue'
 
 export const signup = async (req: Request, res: Response) => {
     try {
-        const { name, email, password } = req.body
+        const { name, email, password, phone } = req.body
         console.log(req.body)
 
         if (!name || !email || !password) {
@@ -31,6 +32,7 @@ export const signup = async (req: Request, res: Response) => {
             name,
             email,
             password: hashPassword,
+            phone,
             role: customerRole?._id
         });
 
@@ -44,13 +46,13 @@ export const signup = async (req: Request, res: Response) => {
             });
         }
 
-        //producer
-        await emailQueue.add("welcome-email", {
+        //producer welcome email + SMS enqueuing
+        await notificationQueue.add("notification", {
             email: user.email,
-            name: user.name,
-            to: email,
-            subject: "Welcome",
-            message: "Welcome to our application"
+            phone: user.phone,
+            subject: "Welcome to Queue E-Commerce",
+            html: `<h1>Welcome to Queue E-Commerce!</h1><p>Hi ${user.name}, thank you for registering with us.</p>`,
+            sms: `Hi ${user.name}, welcome to Queue E-Commerce! Thank you for registering.`
         });
 
         // Retry Mechanism =>BullMQ supports retries automatically.
@@ -144,11 +146,14 @@ export const login = async (req: Request, res: Response) => {
         }
         const { AccessToken, RefreshToken } = genToken(user)
 
-        // producet
-        // await loginQueue.add("login-alert", {
-        //     email: user.email,
-        //     ip: req.ip,
-        // });
+        // enqueues login email and SMS
+        await notificationQueue.add("notification", {
+            email: user.email,
+            phone: user.phone,
+            subject: "Login Alert",
+            html: `<h1>Login Alert</h1><p>Hi ${user.name}, you have successfully logged in to your account.</p>`,
+            sms: `Hi ${user.name}, you have successfully logged in to your Queue E-Commerce account.`
+        });
         res.cookie("AccessToken", AccessToken,
             {
                 httpOnly: true,

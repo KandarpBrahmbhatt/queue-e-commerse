@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { User, Mail, Lock, Calendar, ShieldCheck, Activity, Save, AlertCircle, Clock, Trash2, ExternalLink } from 'lucide-react';
+import { User, Mail, Phone, Lock, Calendar, ShieldCheck, Activity, Save, AlertCircle, Clock, Trash2, ExternalLink } from 'lucide-react';
 
 export default function ProfileManager({ onUserUpdate, showNotification, onOpenProductDetail }) {
   const [profile, setProfile] = useState(null);
@@ -8,6 +8,7 @@ export default function ProfileManager({ onUserUpdate, showNotification, onOpenP
   const [updating, setUpdating] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPasswordSection, setShowPasswordSection] = useState(false);
 
@@ -27,6 +28,7 @@ export default function ProfileManager({ onUserUpdate, showNotification, onOpenP
         setProfile(response.data);
         setName(response.data.name || '');
         setEmail(response.data.email || '');
+        setPhone(response.data.phone || '');
       }
     } catch (err) {
       showNotification(err.message || 'Failed to fetch profile info.', 'error');
@@ -68,7 +70,7 @@ export default function ProfileManager({ onUserUpdate, showNotification, onOpenP
 
     setUpdating(true);
     try {
-      const payload = { name, email };
+      const payload = { name, email, phone };
       if (showPasswordSection && password) {
         payload.password = password;
       }
@@ -80,6 +82,7 @@ export default function ProfileManager({ onUserUpdate, showNotification, onOpenP
         setProfile(response.data);
         setName(response.data.name || '');
         setEmail(response.data.email || '');
+        setPhone(response.data.phone || '');
         setPassword('');
         setShowPasswordSection(false);
         
@@ -181,6 +184,20 @@ export default function ProfileManager({ onUserUpdate, showNotification, onOpenP
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                />
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label className="input-label">Phone Number</label>
+              <div className="input-wrapper">
+                <Phone size={18} className="input-icon" />
+                <input 
+                  type="tel" 
+                  className="form-input with-icon" 
+                  placeholder="Your phone number"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
             </div>

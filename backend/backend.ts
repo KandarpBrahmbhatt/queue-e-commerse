@@ -14,6 +14,7 @@ import './worker/cart.worker';
 import './worker/email.worker';
 import './worker/invoice.worker';
 import './worker/order.worker';
+import './worker/notification.worker';
 import addressRouter from './routes/address.routes';
 import { initSocket } from './socket/socket';
 import http from 'http'
@@ -22,11 +23,15 @@ import reviewRouter from './routes/review.routes';
 import couponRouter from './routes/coupon.routes';
 import currentProfileRouter from './routes/cuurent.routes';
 import inventoryRouter from './routes/inventory.routes';
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./swagger/swagger";
+import dashboardRouter from './routes/dashboard.routes';
 dotenv.config();
 const app = express()
 
 const server = http.createServer(app)
 initSocket(server)
+
 
 // Stripe webhooks require the raw request body (Buffer) to verify the cryptographic signature.
 // Using express.raw() middleware specifically for this route preserves the raw body.
@@ -34,7 +39,11 @@ initSocket(server)
 app.use("/api/payment/webhook", express.raw({ type: "application/json" }), stripeWebhook)
 app.use(express.json())
 app.use(cookieParser())
-
+app.use(
+    "/api-docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec)
+);
 app.use("/api/auth",authRouter)
 app.use("/api/product",productRouter)
 app.use("/api/cart", cartRouter);
@@ -46,6 +55,7 @@ app.use("/api/review",reviewRouter)
 app.use("/api/coupon",couponRouter)
 app.use("/api/profile",currentProfileRouter)
 app.use("/api/inventory",inventoryRouter)
+app.use("/api/dashboard",dashboardRouter)
 const port = 5000
 // app.listen(port, () => {
 //     console.log(`Server Running ${port}`);

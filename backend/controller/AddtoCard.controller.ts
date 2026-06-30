@@ -4,6 +4,8 @@ import Product from "../models/product.model";
 import User, { AuthRequest } from "../models/user.model";
 import { cartQueue } from "../queue/cart.queue";
 import mongoose from "mongoose";
+import { emailQueue } from "../queue/email.queue";
+import { notificationQueue } from "../queue/notification.queue";
 
 export const addToCart = async (req: AuthRequest, res: Response) => {
     try {
@@ -62,16 +64,30 @@ export const addToCart = async (req: AuthRequest, res: Response) => {
             });
         }
 
-        await cartQueue.add(
-            "abandoned-cart",
-            {
-                userId,
-                email: user.email,
-            },
-            {
-                delay: 60 * 1000,
-            }
-        );
+        // await emailQueue.add("cart-add-email", {
+        //     email: user.email,
+        //     name: user.name,
+        //     productName: product.name,
+        //     quantity
+        // })
+        await notificationQueue.add("notification", {
+            email: user.email,
+            phone: user.phone,
+            subject: "Product Added to Cart",
+            html: `<h1>Product Added to Cart</h1><p>Hi ${user.name}, you added ${product.name} (Qty: ${quantity}) to your cart.</p>`,
+            sms: `Hi ${user.name}, you added ${product.name} (Qty: ${quantity}) to your cart.`
+        });
+        // await cartQueue.add(
+        //     "abandoned-cart",
+        //     {
+        //         userId,
+        //         email: user.email,
+        //     },
+        //     {
+        //         delay: 60 * 1000,
+        //     }
+        // );
+
 
         return res.status(200).json({
             success: true,

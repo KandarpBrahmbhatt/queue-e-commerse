@@ -32,6 +32,7 @@ const worker = new Worker("emailQueue",async (job) => {
 );
 
 
+
 worker.on("completed", (job) => {
     console.log(`Job ${job.id} completed`);
 });

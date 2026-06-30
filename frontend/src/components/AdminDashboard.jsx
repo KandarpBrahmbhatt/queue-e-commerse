@@ -3,11 +3,35 @@ import { api } from '../services/api';
 import { 
   ShieldAlert, Package, Truck, CheckCircle2, RotateCcw, AlertTriangle, 
   ChevronLeft, ChevronRight, RefreshCw, User, PlusCircle, Edit, 
-  History, Trash2, MapPin, Sliders, ClipboardList, Plus
+  History, Trash2, MapPin, Sliders, ClipboardList, Plus,
+  TrendingUp, Users, Tag, BarChart3, ShoppingBag, Clock
 } from 'lucide-react';
 
 export default function AdminDashboard({ showNotification }) {
-  const [activeSubTab, setActiveSubTab] = useState('orders'); // 'orders' or 'inventory'
+  const [activeSubTab, setActiveSubTab] = useState('summary'); // 'summary', 'orders', or 'inventory'
+
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  const fetchSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const response = await api.dashboard.getSummary();
+      if (response.success) {
+        setSummary(response.data);
+      }
+    } catch (err) {
+      showNotification(err.message || 'Failed to load dashboard summary.', 'error');
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [showNotification]);
+
+  useEffect(() => {
+    if (activeSubTab === 'summary') {
+      fetchSummary();
+    }
+  }, [activeSubTab, fetchSummary]);
 
   // ==========================================
   // Order Management State & Logic
@@ -345,6 +369,13 @@ export default function AdminDashboard({ showNotification }) {
       {/* Primary Navigation Tabs */}
       <div className="admin-tabs-nav glass-panel">
         <button 
+          className={`tab-nav-btn ${activeSubTab === 'summary' ? 'active' : ''}`}
+          onClick={() => setActiveSubTab('summary')}
+        >
+          <BarChart3 size={16} />
+          <span>Dashboard Summary</span>
+        </button>
+        <button 
           className={`tab-nav-btn ${activeSubTab === 'orders' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('orders')}
         >
@@ -359,6 +390,195 @@ export default function AdminDashboard({ showNotification }) {
           <span>Inventory Manager</span>
         </button>
       </div>
+
+      {/* ========================================================================= */}
+      {/* SUMMARY TAB */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'summary' && (
+        <div className="admin-summary-section">
+          {summaryLoading ? (
+            <div className="loading-state">
+              <div className="loading-spinner"></div>
+              <p>Syncing dashboard summary analytics...</p>
+            </div>
+          ) : !summary ? (
+            <div className="empty-state">
+              <BarChart3 size={48} className="empty-icon" />
+              <h3>Failed to load summary data</h3>
+              <p>Please check backend connections and try syncing again.</p>
+            </div>
+          ) : (
+            <div className="summary-grid-layout">
+              {/* Stat Cards Row */}
+              <div className="summary-stats-grid">
+                <div className="summary-stat-card glass-panel hover-glow">
+                  <div className="stat-icon-wrapper users-icon">
+                    <Users size={22} />
+                  </div>
+                  <div className="stat-data">
+                    <span className="stat-title">Total Users</span>
+                    <span className="stat-number">{summary.totalUsers}</span>
+                  </div>
+                </div>
+
+                <div className="summary-stat-card glass-panel hover-glow">
+                  <div className="stat-icon-wrapper orders-icon">
+                    <ShoppingBag size={22} />
+                  </div>
+                  <div className="stat-data">
+                    <span className="stat-title">Total Orders</span>
+                    <span className="stat-number">{summary.totalOrders}</span>
+                  </div>
+                </div>
+
+                <div className="summary-stat-card glass-panel hover-glow">
+                  <div className="stat-icon-wrapper today-icon">
+                    <Clock size={22} />
+                  </div>
+                  <div className="stat-data">
+                    <span className="stat-title">Today's Orders</span>
+                    <span className="stat-number">{summary.todayOrders}</span>
+                  </div>
+                </div>
+
+                <div className="summary-stat-card glass-panel hover-glow">
+                  <div className="stat-icon-wrapper revenue-icon">
+                    <TrendingUp size={22} />
+                  </div>
+                  <div className="stat-data">
+                    <span className="stat-title">Monthly Revenue</span>
+                    <span className="stat-number">₹{summary.monthlyRevenue?.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <div className="summary-stat-card glass-panel hover-glow">
+                  <div className="stat-icon-wrapper coupon-icon">
+                    <Tag size={22} />
+                  </div>
+                  <div className="stat-data">
+                    <span className="stat-title">Coupons Used</span>
+                    <span className="stat-number">{summary.couponsUsed}</span>
+                  </div>
+                </div>
+
+                <div className="summary-stat-card glass-panel hover-glow alert-bg">
+                  <div className="stat-icon-wrapper stock-alert-icon">
+                    <AlertTriangle size={22} />
+                  </div>
+                  <div className="stat-data">
+                    <span className="stat-title">Low Stock Items</span>
+                    <span className="stat-number">{summary.lowStockProducts}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Status Distribution Card */}
+              <div className="status-distribution-card glass-panel">
+                <h3 className="section-subtitle">Order Delivery Lifecycle</h3>
+                <div className="status-bars-container">
+                  <div className="status-bar-wrapper">
+                    <div className="status-bar-header">
+                      <span>Pending Orders</span>
+                      <span className="status-val">{summary.pendingOrders}</span>
+                    </div>
+                    <div className="progress-bar-bg">
+                      <div 
+                        className="progress-bar-fill pending" 
+                        style={{ width: `${summary.totalOrders > 0 ? (summary.pendingOrders / summary.totalOrders) * 100 : 0}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div className="status-bar-wrapper">
+                    <div className="status-bar-header">
+                      <span>Delivered Orders</span>
+                      <span className="status-val">{summary.deliveredOrders}</span>
+                    </div>
+                    <div className="progress-bar-bg">
+                      <div 
+                        className="progress-bar-fill delivered" 
+                        style={{ width: `${summary.totalOrders > 0 ? (summary.deliveredOrders / summary.totalOrders) * 100 : 0}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div className="status-bar-wrapper">
+                    <div className="status-bar-header">
+                      <span>Cancelled Orders</span>
+                      <span className="status-val">{summary.cancelledOrders}</span>
+                    </div>
+                    <div className="progress-bar-bg">
+                      <div 
+                        className="progress-bar-fill cancelled" 
+                        style={{ width: `${summary.totalOrders > 0 ? (summary.cancelledOrders / summary.totalOrders) * 100 : 0}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Two Column Layout: Best Sellers and Top Customers */}
+              <div className="summary-details-grid">
+                
+                {/* Best Sellers */}
+                <div className="details-card glass-panel">
+                  <h3 className="section-subtitle">Best Selling Products</h3>
+                  {summary.bestSellingProducts?.length === 0 ? (
+                    <p className="no-data-txt">No sales history yet.</p>
+                  ) : (
+                    <div className="bestsellers-list">
+                      {summary.bestSellingProducts?.map((item, index) => (
+                        <div key={item._id} className="bestseller-item">
+                          <div className="bestseller-rank">#{index + 1}</div>
+                          {item.image && (
+                            <img src={item.image} alt={item.productName} className="bestseller-img" />
+                          )}
+                          <div className="bestseller-info">
+                            <span className="bestseller-name">{item.productName}</span>
+                            <span className="bestseller-cat">{item.category || 'Standard Category'}</span>
+                          </div>
+                          <div className="bestseller-sales">
+                            <span className="sales-count">{item.totalSold} sold</span>
+                            <span className="sales-rev">₹{item.price?.toLocaleString()} each</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Top Customers */}
+                <div className="details-card glass-panel">
+                  <h3 className="section-subtitle">Top Customers (By Spending)</h3>
+                  {summary.topCustomers?.length === 0 ? (
+                    <p className="no-data-txt">No customer order data available.</p>
+                  ) : (
+                    <div className="top-customers-list">
+                      {summary.topCustomers?.map((cust, index) => (
+                        <div key={cust._id} className="top-customer-item">
+                          <div className="customer-avatar-badge">
+                            {cust.name ? cust.name[0].toUpperCase() : 'U'}
+                          </div>
+                          <div className="customer-info">
+                            <span className="customer-name">{cust.name}</span>
+                            <span className="customer-email">{cust.email}</span>
+                          </div>
+                          <div className="customer-spending">
+                            <span className="spending-amount">₹{cust.totalSpent?.toLocaleString()}</span>
+                            <span className="order-count">{cust.totalOrders} orders</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* ORDERS TAB */}
@@ -997,6 +1217,257 @@ export default function AdminDashboard({ showNotification }) {
           animation: adminFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           max-width: 1200px;
           margin: 0 auto;
+        }
+
+        /* Dashboard Summary Section */
+        .summary-grid-layout {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          animation: adminFadeIn 0.3s ease;
+        }
+
+        .summary-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 16px;
+        }
+
+        .summary-stat-card {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 20px;
+          background: rgba(255, 255, 255, 0.015);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-sm);
+          transition: all 0.25s ease;
+        }
+
+        .summary-stat-card.alert-bg {
+          border-color: rgba(245, 158, 11, 0.25);
+          background: rgba(245, 158, 11, 0.02);
+        }
+
+        .summary-stat-card:hover {
+          background: rgba(255, 255, 255, 0.03);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-icon-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+
+        .users-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        .orders-icon { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+        .today-icon { background: rgba(6, 182, 212, 0.1); color: #06b6d4; }
+        .revenue-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .coupon-icon { background: rgba(236, 72, 153, 0.1); color: #ec4899; }
+        .stock-alert-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+
+        .stat-data {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .stat-title {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .stat-number {
+          font-size: 1.4rem;
+          font-weight: 800;
+          color: var(--text-main);
+          margin-top: 4px;
+        }
+
+        /* Distribution Card */
+        .status-distribution-card {
+          padding: 24px;
+        }
+
+        .section-subtitle {
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: var(--text-main);
+          margin-bottom: 20px;
+          text-align: left;
+        }
+
+        .status-bars-container {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .status-bar-wrapper {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .status-bar-header {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: var(--text-muted);
+        }
+
+        .status-val {
+          color: var(--text-main);
+          font-weight: 700;
+        }
+
+        .progress-bar-bg {
+          width: 100%;
+          height: 8px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 4px;
+          overflow: hidden;
+        }
+
+        .progress-bar-fill {
+          height: 100%;
+          border-radius: 4px;
+          transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .progress-bar-fill.pending { background: #f59e0b; }
+        .progress-bar-fill.delivered { background: #10b981; }
+        .progress-bar-fill.cancelled { background: #ef4444; }
+
+        /* Two Column Details */
+        .summary-details-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+          .summary-details-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .details-card {
+          padding: 24px;
+        }
+
+        .no-data-txt {
+          color: var(--text-muted);
+          font-size: 0.9rem;
+          padding: 20px 0;
+          text-align: center;
+        }
+
+        /* Bestsellers */
+        .bestsellers-list, .top-customers-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .bestseller-item, .top-customer-item {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 12px;
+          background: rgba(255, 255, 255, 0.01);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-xs);
+          transition: all 0.2s;
+        }
+
+        .bestseller-item:hover, .top-customer-item:hover {
+          background: rgba(255, 255, 255, 0.03);
+          transform: translateX(4px);
+        }
+
+        .bestseller-rank {
+          font-size: 0.95rem;
+          font-weight: 800;
+          color: #a78bfa;
+          width: 24px;
+        }
+
+        .bestseller-img {
+          width: 40px;
+          height: 40px;
+          object-fit: contain;
+          border-radius: 4px;
+          background: rgba(0, 0, 0, 0.1);
+        }
+
+        .bestseller-info, .customer-info {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          flex: 1;
+          min-width: 0;
+        }
+
+        .bestseller-name, .customer-name {
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: var(--text-main);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          width: 100%;
+        }
+
+        .bestseller-cat, .customer-email {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          margin-top: 2px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          width: 100%;
+        }
+
+        .bestseller-sales, .customer-spending {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+        }
+
+        .sales-count, .spending-amount {
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: var(--secondary);
+        }
+
+        .sales-rev, .order-count {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          margin-top: 2px;
+        }
+
+        .customer-avatar-badge {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          color: #fff;
+          font-size: 0.9rem;
         }
 
         @keyframes adminFadeIn {

@@ -20,7 +20,7 @@ export const cuurentUser = async(req:AuthRequest,res:Response)=>{
 
 export const updateCurrentUserProfile = async(req:AuthRequest,res:Response)=>{
     try {
-        const {name,email,password}  = req.body
+        const {name,email,password,phone}  = req.body
 
         const user  = await User.findById(req.user?.userId)
 
@@ -40,6 +40,10 @@ export const updateCurrentUserProfile = async(req:AuthRequest,res:Response)=>{
 
         if (name) {
             user.name = name
+        }
+
+        if (phone !== undefined) {
+            user.phone = phone
         }
 
         if (password) {

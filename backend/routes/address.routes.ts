@@ -12,4 +12,5 @@ addressRouter.put("/update/:id", isAuth, updateAddress)
 addressRouter.delete("/delete/:id", isAuth, deleteAddress)
 addressRouter.get("/getAddressListing",isAuth,getAddressListing)
 addressRouter.get("/getAllAddressListing",getAllAddressListing)
+
 export default addressRouter

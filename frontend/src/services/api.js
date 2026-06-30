@@ -22,10 +22,10 @@ async function request(url, options = {}) {
 
 export const api = {
   auth: {
-    signup: (name, email, password) =>
+    signup: (name, email, password, phone) =>
       request('/auth/signup', {
         method: 'POST',
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, phone }),
       }),
     login: (email, password) =>
       request('/auth/login', {
@@ -197,5 +197,8 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(profileData),
       }),
+  },
+  dashboard: {
+    getSummary: () => request('/dashboard/get'),
   },
 };

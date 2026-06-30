@@ -500,36 +500,22 @@ export const deleteInventory = async (
 
     try {
 
-        const inventory = await Inventory.findByIdAndDelete(
-            req.params.id
-        );
-
+        const inventory = await Inventory.findByIdAndDelete(req.params.id);
         if (!inventory) {
-
             return res.status(404).json({
-
                 success: false,
-
                 message: "Inventory not found",
-
             });
 
         }
-
         return res.status(200).json({
-
             success: true,
-
             message: "Inventory deleted successfully",
-
         });
 
     } catch (error: any) {
-
         return res.status(500).json({
-
             success: false,
-
             message: error.message,
 
         });

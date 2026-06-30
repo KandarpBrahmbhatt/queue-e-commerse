@@ -1,6 +1,6 @@
 import express from 'express'
 import { login, resetPassword, sendotp, signup, verifiedOtp } from '../controller/auth.controller'
-
+// import {authSwagger} from "../swagger/auth.swagger"
 const authRouter = express.Router()
 
 authRouter.post("/signup",signup)

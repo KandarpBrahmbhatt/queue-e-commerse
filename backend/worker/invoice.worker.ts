@@ -10,12 +10,9 @@ import { sendInvoiceEmail } from "../services/email.service";
 
 connectdb();
 
-const worker = new Worker(
-    "invoiceQueue",
+const worker = new Worker("invoiceQueue",
     async (job) => {
-
         const { orderId, userId } = job.data;
-
         const order = await Order.findById(orderId)
             .populate("items.product");
 
@@ -33,13 +30,13 @@ const worker = new Worker(
             order.orderNumber,
             pdfPath
         );
-
         console.log("Invoice email sent");
     },
     {
         connection: connection as any,
     }
 );
+
 
 worker.on("active", (job) => {
     console.log(`Invoice Job ${job.id} active (processing)`);

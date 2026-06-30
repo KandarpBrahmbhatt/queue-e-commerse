@@ -5,6 +5,7 @@ import User, { AuthRequest } from '../models/user.model'
 import Coupon from '../models/coupan.model'
 import { orderEmailQueue } from '../queue/order.queue'
 import mongoose from 'mongoose'
+import { notificationQueue } from '../queue/notification.queue'
 
 export const createOrder = async (req: AuthRequest, res: Response) => {
     try {
@@ -116,6 +117,15 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
         console.log("User Email:", user.email);
 
         console.log("User Name:", user.name);
+
+        await notificationQueue.add("notification", {
+            email: user.email,
+            phone: user.phone,
+            subject: "Order Created",
+            html: `<h1>Order Created</h1><p>Hi ${user.name}, your order #${order.orderNumber} has been created successfully. Total: ₹${order.totalAmount}.</p>`,
+            sms: `Hi ${user.name}, your order #${order.orderNumber} has been created successfully. Total: ₹${order.totalAmount}.`
+        });
+
         return res.status(201).json({ message: "Order created", order })
     } catch (error) {
         console.log(`create order error ${error}`)
@@ -187,7 +197,7 @@ export const cancelOrder = async (req: AuthRequest, res: Response) => {
 
         // Already cancelled
         if (order.orderStatus === "CANCELLED") {
-            return res.status(400).json({ message: "orderCanceled alredat cancelled" })
+            return res.status(400).json({ message: "orderCanceled already cancelled" })
         }
 
         //  Cannot cancel after shipping
@@ -213,6 +223,18 @@ export const cancelOrder = async (req: AuthRequest, res: Response) => {
         order.orderStatus = OrderStatus.CANCELLED;
         await order.save()
 
+        const userObj = await User.findById(order.user);
+        if (!userObj) {
+            return res.status(400).json({ message: "user not found" })
+        }
+
+        await notificationQueue.add("notification", {
+            email: userObj.email,
+            phone: userObj.phone,
+            subject: "Order cancelled successfully",
+            html: `<h1>Order Cancelled</h1><p>Hi ${userObj.name}, your order #${order.orderNumber} has been cancelled successfully.</p>`,
+            sms: `Hi ${userObj.name}, your order #${order.orderNumber} has been cancelled successfully.`
+        });
 
         return res.status(200).json({
             success: true,
@@ -276,7 +298,7 @@ export const requestReplacement = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ message: "Only delivered orders can be replaced" });
         }
 
-        const diffDays =(Date.now() - new Date(order.deliveredAt!).getTime()) /(1000 * 60 * 60 * 24);
+        const diffDays = (Date.now() - new Date(order.deliveredAt!).getTime()) / (1000 * 60 * 60 * 24);
 
         if (diffDays > 7) {
             return res.status(400).json({ message: "Replacement window expired" });
@@ -383,42 +405,53 @@ export const approveReturn = async (req: AuthRequest, res: Response) => {
 
 //admin
 export const markAsShipped = async (req: Request, res: Response) => {
-  const { orderId } = req.params;
+    const { orderId } = req.params;
 
-  const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId);
 
-  if (!order) {
-    return res.status(404).json({ message: "Order not found" });
-  }
+    if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+    }
 
-  order.orderStatus = OrderStatus.SHIPPED;
-  order.shippedAt = new Date();
+    order.orderStatus = OrderStatus.SHIPPED;
+    order.shippedAt = new Date();
 
-  await order.save();
+    await order.save();
 
-  return res.json({
-    message: "Order marked as shipped",
-    order,
-  });
+    return res.json({
+        message: "Order marked as shipped",
+        order,
+    });
 };
 
 //admin
 export const markAsDelivered = async (req: Request, res: Response) => {
-  const { orderId } = req.params;
+    const { orderId } = req.params;
 
-  const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId);
 
-  if (!order) {
-    return res.status(404).json({ message: "Order not found" });
-  }
+    if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+    }
 
-  order.orderStatus = OrderStatus.DELIVERD;
-  order.deliveredAt = new Date();
+    order.orderStatus = OrderStatus.DELIVERD;
+    order.deliveredAt = new Date();
 
-  await order.save();
+    await order.save();
 
-  return res.json({
-    message: "Order delivered successfully",
-    order,
-  });
+    const userObj = await User.findById(order.user);
+    if (userObj) {
+        await notificationQueue.add("notification", {
+            email: userObj.email,
+            phone: userObj.phone,
+            subject: "Order Delivered",
+            html: `<h1>Order Delivered</h1><p>Hi ${userObj.name}, your order #${order.orderNumber} has been delivered successfully.</p>`,
+            sms: `Hi ${userObj.name}, your order #${order.orderNumber} has been delivered successfully. Thank you for shopping with us!`
+        });
+    }
+
+    return res.json({
+        message: "Order delivered successfully",
+        order,
+    });
 };

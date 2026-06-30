@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { api } from '../services/api';
-import { X, Lock, Mail, User, Eye, EyeOff } from 'lucide-react';
+import { X, Lock, Mail, User, Eye, EyeOff, Phone } from 'lucide-react';
 
 export default function AuthView({ onClose, onSuccess, showNotification }) {
   const [mode, setMode] = useState('login'); // 'login', 'signup', 'forgot', 'verify-otp', 'reset-password'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -35,13 +36,13 @@ export default function AuthView({ onClose, onSuccess, showNotification }) {
         setLoading(false);
       }
     } else if (mode === 'signup') {
-      if (!name || !email || !password) {
+      if (!name || !email || !password || !phone) {
         showNotification('Please fill in all required fields.', 'error');
         return;
       }
       setLoading(true);
       try {
-        const response = await api.auth.signup(name, email, password);
+        const response = await api.auth.signup(name, email, password, phone);
         showNotification(response.message || 'Account created successfully!', 'success');
         // Store the JWT access token in localStorage for Socket.IO authentication
         if (response.AccessToken) {
@@ -144,20 +145,36 @@ export default function AuthView({ onClose, onSuccess, showNotification }) {
 
         <form onSubmit={handleSubmit} className="auth-form">
           {mode === 'signup' && (
-            <div className="input-group">
-              <label className="input-label">Full Name</label>
-              <div className="input-wrapper">
-                <User size={18} className="input-icon" />
-                <input 
-                  type="text" 
-                  className="form-input with-icon" 
-                  placeholder="Enter your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
+            <>
+              <div className="input-group">
+                <label className="input-label">Full Name</label>
+                <div className="input-wrapper">
+                  <User size={18} className="input-icon" />
+                  <input 
+                    type="text" 
+                    className="form-input with-icon" 
+                    placeholder="Enter your name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
-            </div>
+              <div className="input-group">
+                <label className="input-label">Phone Number</label>
+                <div className="input-wrapper">
+                  <Phone size={18} className="input-icon" />
+                  <input 
+                    type="tel" 
+                    className="form-input with-icon" 
+                    placeholder="Enter phone number"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           {['login', 'signup', 'forgot'].includes(mode) && (
