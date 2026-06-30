@@ -20,6 +20,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "express-validator": "^7.3.2",
     "faker": "^6.6.6",
     "ioredis": "^5.11.1",
@@ -29,13 +30,18 @@
     "nodemailer": "^9.0.3",
     "nodemon": "^3.1.14",
     "openai": "^6.44.0",
+    "passport": "^0.7.0",
+    "passport-facebook": "^3.0.0",
+    "passport-google-oauth20": "^2.0.0",
     "puppeteer": "^25.1.0",
+    "request-ip": "^3.3.0",
     "socket.io": "^4.8.3",
     "stripe": "^22.2.2",
     "swagger": "^0.7.5",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
-    "twilio": "^6.0.2"
+    "twilio": "^6.0.2",
+    "ua-parser-js": "^2.0.10"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

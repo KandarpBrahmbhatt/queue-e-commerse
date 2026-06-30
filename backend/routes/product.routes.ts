@@ -14,4 +14,5 @@ productRouter.get("/getAggregationProduct",isAuth,getAggregationProduct)
 productRouter.get("/recent", isAuth, getRecentViewed);
 
 productRouter.delete("/recent", isAuth, clearRecentView);
+
 export default productRouter
