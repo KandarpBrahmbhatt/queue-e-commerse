@@ -26,6 +26,8 @@ import inventoryRouter from './routes/inventory.routes';
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger/swagger";
 import dashboardRouter from './routes/dashboard.routes';
+import securityRouter from './routes/security.routes';
+import { deviceMiddleware } from './middaleware/device.middleware';
 dotenv.config();
 const app = express()
 
@@ -33,6 +35,7 @@ const server = http.createServer(app)
 initSocket(server)
 
 
+app.use(deviceMiddleware);
 // Stripe webhooks require the raw request body (Buffer) to verify the cryptographic signature.
 // Using express.raw() middleware specifically for this route preserves the raw body.
 // This route must be registered before express.json() is applied globally.
@@ -56,6 +59,7 @@ app.use("/api/coupon",couponRouter)
 app.use("/api/profile",currentProfileRouter)
 app.use("/api/inventory",inventoryRouter)
 app.use("/api/dashboard",dashboardRouter)
+app.use("/api/security", securityRouter);
 const port = 5000
 // app.listen(port, () => {
 //     console.log(`Server Running ${port}`);

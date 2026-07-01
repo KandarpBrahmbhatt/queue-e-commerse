@@ -1,3 +1,2 @@
-import passport from 'passport'
-
-impoer
+// Passport config draft - currently not in use
+export {};

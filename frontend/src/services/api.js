@@ -47,6 +47,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       }),
+    forgotPassword: (oldPassword, newPassword) =>
+      request('/auth/forgotpassword', {
+        method: 'POST',
+        body: JSON.stringify({ oldPassword, newPassword }),
+      }),
   },
   products: {
     getAggregation: (page = 1, limit = 10, search = '') => {
@@ -200,5 +205,14 @@ export const api = {
   },
   dashboard: {
     getSummary: () => request('/dashboard/get'),
+  },
+  security: {
+    getSessions: () => request('/security/sessions'),
+    revokeSession: (sessionId) =>
+      request(`/security/sessions/${sessionId}`, {
+        method: 'DELETE',
+      }),
+    getLoginHistory: () => request('/security/login-history'),
+    getAllLoginHistory: () => request('/security/login-history/all'),
   },
 };
