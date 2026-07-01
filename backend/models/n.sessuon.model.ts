@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 import { Types } from "mongoose";
 
-export interface from extends Document{
+export interface ISession extends Document{
     userId:Types.ObjectId;
     refreshToken:string;
     deviceName:string,
@@ -52,7 +52,7 @@ const sessionSchema = new Schema<ISession>({
         default:Date.now
     },
     lastActivity:{
-        type:String
+        type:Date
     }
 
 })

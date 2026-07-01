@@ -28,6 +28,7 @@ import { swaggerSpec } from "./swagger/swagger";
 import dashboardRouter from './routes/dashboard.routes';
 import securityRouter from './routes/security.routes';
 import { deviceMiddleware } from './middaleware/device.middleware';
+import importProductRouter from './routes/productImport.routes';
 dotenv.config();
 const app = express()
 
@@ -60,6 +61,7 @@ app.use("/api/profile",currentProfileRouter)
 app.use("/api/inventory",inventoryRouter)
 app.use("/api/dashboard",dashboardRouter)
 app.use("/api/security", securityRouter);
+app.use("/api/productImport",importProductRouter)
 const port = 5000
 // app.listen(port, () => {
 //     console.log(`Server Running ${port}`);
